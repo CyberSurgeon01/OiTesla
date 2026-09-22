@@ -132,6 +132,10 @@ export const updateRideStatus = async (req: any, res: Response) => {
 
     const ride = await prisma.rideRequest.findUnique({ where: { id: parseInt(ride_id) } });
     if (!ride) return res.status(404).json({ error: 'Ride not found' });
+
+    if (userRole === 'PASSENGER' && ride.passenger_id !== req.user.id) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     
     if (!validTransitions[ride.status].includes(status)) {
       return res.status(400).json({ error: `Invalid transition from ${ride.status} to ${status}` });

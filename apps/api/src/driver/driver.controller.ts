@@ -38,6 +38,7 @@ export const getActivePools = async (req: any, res: Response) => {
         status: PoolStatus.ACTIVE 
       },
       include: {
+        vehicle: true,
         rideRequests: {
           include: { passenger: { select: { name: true, id: true } } },
           orderBy: { requested_at: 'asc' }
@@ -63,7 +64,8 @@ export const transitionPool = async (req: any, res: Response) => {
 
     const pool = await prisma.pool.findFirst({
       where: { id: parseInt(pool_id), vehicle_id: vehicle.id, status: PoolStatus.ACTIVE },
-      include: { rideRequests: { where: { status: { notIn: [RideStatus.CANCELLED] } } } }
+      include: { vehicle: true,
+        rideRequests: { where: { status: { notIn: [RideStatus.CANCELLED] } } } }
     });
 
     if (!pool) return res.status(404).json({ error: 'Active pool not found for this vehicle' });
@@ -138,6 +140,7 @@ export const getHistory = async (req: any, res: Response) => {
     const history = await prisma.pool.findMany({
       where: { vehicle_id: vehicle.id, status: PoolStatus.COMPLETED },
       include: {
+        vehicle: true,
         rideRequests: {
           include: { passenger: { select: { name: true, id: true } } }
         }

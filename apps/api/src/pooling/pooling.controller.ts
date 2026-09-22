@@ -160,3 +160,39 @@ export const updateRideStatus = async (req: any, res: Response) => {
     res.status(500).json({ error: 'Failed to update ride status' });
   }
 };
+
+export const getMyActiveRide = async (req: any, res: Response) => {
+  try {
+    const passenger_id = req.user.id;
+    const activeRide = await prisma.rideRequest.findFirst({
+      where: { 
+        passenger_id, 
+        status: { notIn: [RideStatus.CANCELLED, RideStatus.COMPLETED] } 
+      },
+      include: { pool: { include: { vehicle: true } } },
+      orderBy: { requested_at: 'desc' }
+    });
+    res.json(activeRide || null);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch active ride' });
+  }
+};
+
+export const getMyHistory = async (req: any, res: Response) => {
+  try {
+    const passenger_id = req.user.id;
+    const history = await prisma.rideRequest.findMany({
+      where: { 
+        passenger_id, 
+        status: { in: [RideStatus.COMPLETED, RideStatus.CANCELLED] } 
+      },
+      include: { pool: { include: { vehicle: true } } },
+      orderBy: { requested_at: 'desc' }
+    });
+    res.json(history);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch ride history' });
+  }
+};

@@ -29,20 +29,53 @@ export default function PassengerHistory() {
   }, [router]);
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>My Ride History</h1>
-        <Link href="/passenger/dashboard">Back to Dashboard</Link>
+    <div className="page-container">
+      <div className="header">
+        <div className="header-left">
+          <h1>My Ride History</h1>
+        </div>
+        <div className="header-right">
+          <Link href="/passenger/dashboard" className="btn btn-ghost">Back to Dashboard</Link>
+        </div>
       </div>
 
-      <div style={{ margin: '2rem 0' }}>
-        {history.length === 0 ? <p>No past rides found.</p> : history.map(ride => (
-          <div key={ride.id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
-            <p><strong>Status:</strong> {ride.status}</p>
-            <p><strong>Route:</strong> {ride.pickup_zone} ➡️ {ride.destination_zone}</p>
-            <p><strong>Fare:</strong> {ride.fare_amount / 100} BDT ({ride.payment_method})</p>
-            <p><strong>Requested At:</strong> {new Date(ride.requested_at).toLocaleString()}</p>
-            {ride.pool && <p><strong>Vehicle:</strong> {ride.pool.vehicle.name}</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {history.length === 0 ? (
+          <div className="empty-state">
+            <div className="icon">🕒</div>
+            <p>No past rides found.</p>
+          </div>
+        ) : history.map(ride => (
+          <div key={ride.id} className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div style={{ fontWeight: '500', fontSize: '1.1rem' }}>
+                {ride.pickup_zone} ➡️ {ride.destination_zone}
+              </div>
+              <div className={`badge ${ride.status === 'COMPLETED' ? 'badge-green' : ride.status === 'CANCELLED' ? 'badge-red' : 'badge-muted'}`}>
+                {ride.status}
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+              <div>
+                <div className="form-label">Fare</div>
+                <div style={{ fontWeight: '600' }}>{ride.fare_amount / 100} BDT</div>
+              </div>
+              <div>
+                <div className="form-label">Method</div>
+                <div>{ride.payment_method}</div>
+              </div>
+              <div>
+                <div className="form-label">Date</div>
+                <div>{new Date(ride.requested_at).toLocaleDateString()}</div>
+              </div>
+              {ride.pool && (
+                <div>
+                  <div className="form-label">Vehicle</div>
+                  <div>{ride.pool.vehicle.name}</div>
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>

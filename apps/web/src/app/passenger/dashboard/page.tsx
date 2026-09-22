@@ -111,94 +111,118 @@ export default function PassengerDashboard() {
     router.push('/login');
   };
 
-  if (!user || loading) return <p>Loading...</p>;
+  if (!user || loading) return <div className="loading"><div className="spinner"></div></div>;
 
-  // Check if passenger is allowed to cancel
   const canCancel = activeRide && ['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED'].includes(activeRide.status);
+  
+  // Status calculation for progress bar
+  let progress = 0;
+  if (activeRide) {
+    if (activeRide.status === 'REQUESTED') progress = 20;
+    else if (activeRide.status === 'MATCHED') progress = 40;
+    else if (activeRide.status === 'ACCEPTED') progress = 60;
+    else if (activeRide.status === 'DRIVER_ARRIVED') progress = 80;
+    else if (activeRide.status === 'STARTED') progress = 100;
+  }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1>Passenger Dashboard</h1>
-        <div>
-          <Link href="/passenger/history" style={{ marginRight: '1rem' }}>Ride History</Link>
-          <button onClick={handleLogout} style={{ padding: '0.5rem' }}>Logout</button>
+    <div className="page-container">
+      <div className="header">
+        <div className="header-left">
+          <h1>Passenger Dashboard</h1>
+          <p>Welcome back, {user.name} 👋</p>
+        </div>
+        <div className="header-right">
+          <Link href="/passenger/history" className="btn btn-ghost">Ride History</Link>
+          <button onClick={handleLogout} className="btn btn-ghost">Logout</button>
         </div>
       </div>
-      <p>Welcome, {user.name}!</p>
       
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <div className="alert alert-error">{error}</div>}
 
       {!activeRide ? (
-        <div style={{ margin: '2rem 0', padding: '1rem', border: '1px solid #ccc' }}>
-          <h2>Request a Ride</h2>
-          <form onSubmit={requestRide} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label>
-              Pickup Zone:
-              <select value={pickup} onChange={(e) => setPickup(e.target.value)} style={{ marginLeft: '1rem', padding: '0.5rem' }}>
-                {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
-              </select>
-            </label>
-            <label>
-              Destination Zone:
-              <select value={destination} onChange={(e) => setDestination(e.target.value)} style={{ marginLeft: '1rem', padding: '0.5rem' }}>
-                {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
-              </select>
-            </label>
-            <label>
-              Seats Required:
-              <input type="number" min="1" max="3" value={seats} onChange={(e) => setSeats(parseInt(e.target.value))} style={{ marginLeft: '1rem', padding: '0.5rem' }} />
-            </label>
-            <label>
-              Payment Method:
-              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ marginLeft: '1rem', padding: '0.5rem' }}>
-                <option value="CASH">Cash</option>
-                <option value="TESLA_PAY">TeslaPay Wallet</option>
-              </select>
-            </label>
-            <button type="submit" style={{ padding: '0.5rem', alignSelf: 'flex-start' }}>Request Ride</button>
+        <div className="card">
+          <h2 className="section-title">🚕 Request a Ride</h2>
+          <form onSubmit={requestRide} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Pickup Zone</label>
+                <select className="form-select" value={pickup} onChange={(e) => setPickup(e.target.value)}>
+                  {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Destination Zone</label>
+                <select className="form-select" value={destination} onChange={(e) => setDestination(e.target.value)}>
+                  {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
+                </select>
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Seats Required</label>
+                <input className="form-input" type="number" min="1" max="3" value={seats} onChange={(e) => setSeats(parseInt(e.target.value))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Payment Method</label>
+                <select className="form-select" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                  <option value="CASH">Cash</option>
+                  <option value="TESLA_PAY">TeslaPay Wallet</option>
+                </select>
+              </div>
+            </div>
+            
+            <button type="submit" className="btn btn-primary" style={{ marginTop: '0.5rem', alignSelf: 'flex-start' }}>
+              Find a Ride
+            </button>
           </form>
         </div>
       ) : (
-        <div style={{ margin: '2rem 0', padding: '1rem', border: '1px solid green' }}>
-          <h2>Current Ride Status: {activeRide.status}</h2>
-          <p><strong>Route:</strong> {activeRide.pickup_zone} ➡️ {activeRide.destination_zone}</p>
-          <p><strong>Seats:</strong> {activeRide.seats_requested}</p>
-          <p><strong>Fare:</strong> {activeRide.fare_amount / 100} BDT ({activeRide.payment_method})</p>
-          
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ flexGrow: 1, height: '10px', background: '#eee', borderRadius: '5px', overflow: 'hidden' }}>
-              <div style={{ 
-                height: '100%', 
-                background: 'green', 
-                width: activeRide.status === 'REQUESTED' ? '20%' :
-                       activeRide.status === 'MATCHED' ? '40%' :
-                       activeRide.status === 'ACCEPTED' ? '60%' :
-                       activeRide.status === 'DRIVER_ARRIVED' ? '80%' : '100%'
-              }} />
+        <div className="card card-green">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+            <div>
+              <h2 style={{ color: 'var(--green)' }}>Ride in Progress</h2>
+              <div style={{ marginTop: '0.5rem', fontSize: '1.1rem', fontWeight: '500' }}>
+                {activeRide.pickup_zone} ➡️ {activeRide.destination_zone}
+              </div>
             </div>
-            <span>
-              {activeRide.status === 'REQUESTED' ? 'Waiting for Match...' :
-               activeRide.status === 'MATCHED' ? 'Matched, awaiting driver acceptance' :
-               activeRide.status === 'ACCEPTED' ? 'Driver Accepted, on the way' :
-               activeRide.status === 'DRIVER_ARRIVED' ? 'Driver Arrived!' : 'Ride in Progress'}
-            </span>
+            <div className="badge badge-green">{activeRide.status}</div>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem' }}>
+            <div>
+              <div className="form-label">Seats</div>
+              <div style={{ fontWeight: '600' }}>{activeRide.seats_requested}</div>
+            </div>
+            <div>
+              <div className="form-label">Fare</div>
+              <div style={{ fontWeight: '600', color: 'var(--green)' }}>{activeRide.fare_amount / 100} BDT</div>
+            </div>
+            <div>
+              <div className="form-label">Payment</div>
+              <div style={{ fontWeight: '600' }}>{activeRide.payment_method}</div>
+            </div>
+          </div>
+          
+          <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+            </div>
+            <div className="status-steps">
+              <div className={`status-step ${progress >= 20 ? 'completed' : ''} ${progress === 20 ? 'active' : ''}`}>Requested</div>
+              <div className={`status-step ${progress >= 40 ? 'completed' : ''} ${progress === 40 ? 'active' : ''}`}>Matched</div>
+              <div className={`status-step ${progress >= 60 ? 'completed' : ''} ${progress === 60 ? 'active' : ''}`}>Accepted</div>
+              <div className={`status-step ${progress >= 80 ? 'completed' : ''} ${progress === 80 ? 'active' : ''}`}>Arrived</div>
+              <div className={`status-step ${progress >= 100 ? 'completed' : ''} ${progress === 100 ? 'active' : ''}`}>In Trip</div>
+            </div>
           </div>
 
-          <button 
-            onClick={cancelRide} 
-            disabled={!canCancel}
-            style={{ 
-              marginTop: '1rem', 
-              padding: '0.5rem', 
-              background: canCancel ? 'red' : 'gray', 
-              color: 'white',
-              border: 'none',
-              cursor: canCancel ? 'pointer' : 'not-allowed'
-            }}
-          >
-            Cancel Ride
-          </button>
+          {canCancel && (
+            <button onClick={cancelRide} className="btn btn-ghost" style={{ color: 'var(--red)', borderColor: 'var(--red)' }}>
+              Cancel Ride
+            </button>
+          )}
         </div>
       )}
     </div>

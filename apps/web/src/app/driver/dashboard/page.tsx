@@ -22,11 +22,6 @@ export default function DriverDashboard() {
       if (res.ok) {
         const pools = await res.json();
         setActivePools(pools);
-        
-        // Update online status implicitly based on whether we get a valid response for vehicle,
-        // but it's cleaner to fetch driver vehicle status directly. We'll derive it if a pool exists,
-        // or just rely on toggle state. Since we don't have a GET /status endpoint, 
-        // we assume the vehicle status from the pool's vehicle if available.
         if (pools.length > 0 && pools[0].vehicle) {
           setIsOnline(pools[0].vehicle.status === 'ONLINE');
         }
@@ -115,14 +110,9 @@ export default function DriverDashboard() {
   };
 
   if (!user || loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20vh' }}>
-        <h2>Loading Driver Dashboard...</h2>
-      </div>
-    );
+    return <div className="loading"><div className="spinner"></div></div>;
   }
 
-  // Derived state for UI separation
   const activeAndNotCancelled = (ride: any) => ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED';
   
   const pendingPools = activePools.filter(p => 
@@ -134,96 +124,83 @@ export default function DriverDashboard() {
   );
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '900px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+    <div className="page-container">
       
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ margin: 0 }}>Driver Dashboard</h1>
-          <p style={{ margin: 0, color: 'gray' }}>Hello, {user.name} | TeslaPay Balance: {user.wallet_balance ? (user.wallet_balance / 100).toFixed(2) : 0} BDT</p>
+      <div className="header">
+        <div className="header-left">
+          <h1>Driver Dashboard</h1>
+          <p>Hello, {user.name} 👋</p>
         </div>
-        <button 
-          onClick={() => { localStorage.clear(); router.push('/login'); }} 
-          style={{ padding: '0.5rem 1rem', background: '#333', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-        >
-          Logout
-        </button>
+        <div className="header-right">
+          <div className="badge badge-muted" style={{ marginRight: '1rem', padding: '0.4rem 0.8rem' }}>
+            Balance: {user.wallet_balance ? (user.wallet_balance / 100).toFixed(2) : 0} BDT
+          </div>
+          <button onClick={() => { localStorage.clear(); router.push('/login'); }} className="btn btn-ghost">
+            Logout
+          </button>
+        </div>
       </div>
 
-      {error && (
-        <div style={{ background: '#ffebee', color: '#c62828', padding: '1rem', borderRadius: '4px', marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="alert alert-error">{error}</div>}
 
       {/* Online/Offline Toggle Panel */}
-      <div style={{ 
-        background: isOnline ? '#e8f5e9' : '#fafafa', 
-        border: `1px solid ${isOnline ? '#4caf50' : '#ddd'}`,
-        padding: '1.5rem', 
-        borderRadius: '8px', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '2rem'
-      }}>
+      <div className={`card ${isOnline ? 'card-green' : ''}`} style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ margin: 0 }}>Vehicle Status</h2>
-          <p style={{ margin: 0, color: isOnline ? '#2e7d32' : 'gray' }}>
+          <h2>Vehicle Status</h2>
+          <p style={{ marginTop: '0.25rem', color: isOnline ? 'var(--green)' : 'var(--text-muted)' }}>
             {isOnline ? 'You are ONLINE and receiving requests.' : 'You are OFFLINE.'}
           </p>
         </div>
-        <button 
-          onClick={toggleOnline} 
-          style={{ 
-            padding: '0.75rem 1.5rem', 
-            fontSize: '1rem', 
-            fontWeight: 'bold',
-            background: isOnline ? '#f44336' : '#4caf50', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '4px', 
-            cursor: 'pointer' 
-          }}
-        >
-          {isOnline ? 'Go Offline' : 'Go Online'}
-        </button>
+        <div className="toggle-wrapper" onClick={toggleOnline}>
+          <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+          <div className={`toggle-track ${isOnline ? 'active' : ''}`}>
+            <div className="toggle-thumb"></div>
+          </div>
+        </div>
       </div>
 
       {/* Incoming Requests Panel */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>Incoming Requests</h2>
+      <div style={{ marginBottom: '3rem' }}>
+        <h2 className="section-title">📡 Incoming Requests</h2>
         {pendingPools.length === 0 ? (
-          <p style={{ color: 'gray', fontStyle: 'italic' }}>No incoming requests right now.</p>
+          <div className="empty-state">
+            <div className="icon">💤</div>
+            <p>No incoming requests right now.</p>
+          </div>
         ) : (
           pendingPools.map(pool => {
             const activeRides = pool.rideRequests.filter(activeAndNotCancelled);
             const seatsUsed = activeRides.reduce((acc: number, r: any) => acc + r.seats_requested, 0);
             
             return (
-              <div key={pool.id} style={{ border: '1px solid #2196f3', borderRadius: '8px', padding: '1rem', marginBottom: '1rem', background: '#e3f2fd' }}>
+              <div key={pool.id} className="card card-blue" style={{ marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#1565c0' }}>New Pool Assignment</h3>
-                    <p style={{ margin: 0, fontWeight: 'bold' }}>Seats: {seatsUsed} / {pool.vehicle.seat_capacity}</p>
+                    <h3 style={{ color: 'var(--blue)' }}>New Pool Assignment</h3>
+                    <div style={{ marginTop: '0.5rem', fontWeight: '500' }}>
+                      Seats Filled: <span style={{ color: 'white' }}>{seatsUsed} / {pool.vehicle.seat_capacity}</span>
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => transitionPool(pool.id, 'ACCEPTED')}
-                    style={{ background: '#1976d2', color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                  >
+                  <button onClick={() => transitionPool(pool.id, 'ACCEPTED')} className="btn btn-blue">
                     Accept Pool
                   </button>
                 </div>
                 
-                <hr style={{ borderColor: '#bbdefb', margin: '1rem 0' }} />
+                <hr className="divider" />
                 
-                {activeRides.map((ride: any) => (
-                  <div key={ride.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span>👤 {ride.passenger.name} ({ride.seats_requested} seat)</span>
-                    <span>📍 {ride.pickup_zone} ➡️ {ride.destination_zone}</span>
-                    <span style={{ fontWeight: 'bold' }}>💵 {ride.fare_amount / 100} BDT ({ride.payment_method})</span>
-                  </div>
-                ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {activeRides.map((ride: any) => (
+                    <div key={ride.id} className="ride-row">
+                      <div className="route">
+                        <span>👤 {ride.passenger.name} ({ride.seats_requested} seat)</span>
+                        <span style={{ margin: '0 0.5rem', opacity: 0.3 }}>|</span>
+                        <span>📍 {ride.pickup_zone} ➡️ {ride.destination_zone}</span>
+                      </div>
+                      <div className="fare">{ride.fare_amount / 100} BDT</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })
@@ -231,56 +208,55 @@ export default function DriverDashboard() {
       </div>
 
       {/* Active Ride Panel */}
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>Active Ride</h2>
+      <div style={{ marginBottom: '3rem' }}>
+        <h2 className="section-title">🚀 Active Trip</h2>
         {inProgressPools.length === 0 ? (
-          <p style={{ color: 'gray', fontStyle: 'italic' }}>No ride currently in progress.</p>
+          <div className="empty-state">
+            <div className="icon">🛣️</div>
+            <p>No trip currently in progress.</p>
+          </div>
         ) : (
           inProgressPools.map(pool => {
             const activeRides = pool.rideRequests.filter(activeAndNotCancelled);
             const seatsUsed = activeRides.reduce((acc: number, r: any) => acc + r.seats_requested, 0);
-            // Derive current state from the first active ride
             const currentState = activeRides[0]?.status;
 
             return (
-              <div key={pool.id} style={{ border: '2px solid #4caf50', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, color: '#2e7d32' }}>Trip in Progress ({currentState})</h3>
-                  <div style={{ background: '#e8f5e9', padding: '0.25rem 0.75rem', borderRadius: '16px', fontWeight: 'bold', color: '#2e7d32' }}>
-                    Seats: {seatsUsed} / {pool.vehicle.seat_capacity}
+              <div key={pool.id} className="card card-accent" style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h3>Trip in Progress</h3>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <span className="badge badge-blue">Seats: {seatsUsed} / {pool.vehicle.seat_capacity}</span>
+                    <span className="badge badge-green">{currentState}</span>
                   </div>
                 </div>
 
-                {activeRides.map((ride: any) => (
-                  <div key={ride.id} style={{ padding: '0.5rem', background: '#f5f5f5', borderRadius: '4px', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>👤 {ride.passenger.name}</span>
-                    <span>📍 {ride.pickup_zone} ➡️ {ride.destination_zone}</span>
-                    <span style={{ fontWeight: 'bold' }}>💵 {ride.fare_amount / 100} BDT ({ride.payment_method})</span>
-                  </div>
-                ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
+                  {activeRides.map((ride: any) => (
+                    <div key={ride.id} className="ride-row">
+                      <div className="route">
+                        <span>👤 {ride.passenger.name}</span>
+                        <span style={{ margin: '0 0.5rem', opacity: 0.3 }}>|</span>
+                        <span>📍 {ride.pickup_zone} ➡️ {ride.destination_zone}</span>
+                      </div>
+                      <div className="fare">{ride.fare_amount / 100} BDT</div>
+                    </div>
+                  ))}
+                </div>
 
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                   {currentState === 'ACCEPTED' && (
-                    <button 
-                      onClick={() => transitionPool(pool.id, 'DRIVER_ARRIVED')}
-                      style={{ flex: 1, background: '#ff9800', color: 'white', border: 'none', padding: '1rem', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}
-                    >
+                    <button onClick={() => transitionPool(pool.id, 'DRIVER_ARRIVED')} className="btn btn-orange btn-lg">
                       I have arrived
                     </button>
                   )}
                   {currentState === 'DRIVER_ARRIVED' && (
-                    <button 
-                      onClick={() => transitionPool(pool.id, 'STARTED')}
-                      style={{ flex: 1, background: '#2196f3', color: 'white', border: 'none', padding: '1rem', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}
-                    >
+                    <button onClick={() => transitionPool(pool.id, 'STARTED')} className="btn btn-blue btn-lg">
                       Start Trip
                     </button>
                   )}
                   {currentState === 'STARTED' && (
-                    <button 
-                      onClick={() => transitionPool(pool.id, 'COMPLETED')}
-                      style={{ flex: 1, background: '#4caf50', color: 'white', border: 'none', padding: '1rem', borderRadius: '4px', cursor: 'pointer', fontSize: '1rem' }}
-                    >
+                    <button onClick={() => transitionPool(pool.id, 'COMPLETED')} className="btn btn-green btn-lg">
                       Complete Trip
                     </button>
                   )}
@@ -293,25 +269,36 @@ export default function DriverDashboard() {
 
       {/* Ride History Panel */}
       <div>
-        <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>Ride History</h2>
-        {historyLoading ? <p>Loading history...</p> : history.length === 0 ? (
-          <p style={{ color: 'gray', fontStyle: 'italic' }}>No completed trips yet.</p>
+        <h2 className="section-title">📋 Recent History</h2>
+        {historyLoading ? <div className="loading"><div className="spinner"></div></div> : history.length === 0 ? (
+          <div className="empty-state">
+            <div className="icon">📁</div>
+            <p>No completed trips yet.</p>
+          </div>
         ) : (
-          history.map(pool => (
-            <div key={pool.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '1rem', marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'gray', fontSize: '0.9rem' }}>
-                <span>Completed: {new Date(pool.updatedAt).toLocaleString()}</span>
-                <span>Pool #{pool.id}</span>
-              </div>
-              {pool.rideRequests.map((ride: any) => (
-                <div key={ride.id} style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #f5f5f5', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
-                  <span>{ride.passenger.name}</span>
-                  <span>{ride.pickup_zone} ➡️ {ride.destination_zone}</span>
-                  <span style={{ fontWeight: 'bold' }}>{ride.fare_amount / 100} BDT</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {history.map(pool => (
+              <div key={pool.id} className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <span style={{ fontWeight: '600' }}>Pool #{pool.id}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{new Date(pool.updatedAt).toLocaleDateString()}</span>
                 </div>
-              ))}
-            </div>
-          ))
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {pool.rideRequests.map((ride: any) => (
+                    <div key={ride.id} className="ride-row" style={{ background: 'var(--bg)' }}>
+                      <div className="route">
+                        <span>{ride.passenger.name}</span>
+                        <span style={{ margin: '0 0.5rem', opacity: 0.3 }}>|</span>
+                        <span>{ride.pickup_zone} ➡️ {ride.destination_zone}</span>
+                      </div>
+                      <div className="fare" style={{ color: 'var(--text)' }}>{ride.fare_amount / 100} BDT</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

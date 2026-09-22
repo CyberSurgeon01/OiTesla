@@ -2,31 +2,30 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <main style={{ maxWidth: '600px', margin: '100px auto', fontFamily: 'sans-serif', textAlign: 'center' }}>
-      <h1>🚕 Welcome to OiTesla</h1>
-      <p style={{ color: '#666', marginBottom: '40px' }}>
-        Dhaka's premier Tesla Rickshaw ride-pooling service. 
-        Share a ride, save money, and maximize capacity!
-      </p>
-      
-      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-        <Link 
-          href="/login" 
-          style={{ padding: '10px 20px', background: '#0070f3', color: 'white', textDecoration: 'none', borderRadius: '5px', fontWeight: 'bold' }}>
-          Login
-        </Link>
-        <Link 
-          href="/signup" 
-          style={{ padding: '10px 20px', background: '#eaeaea', color: '#333', textDecoration: 'none', borderRadius: '5px', fontWeight: 'bold' }}>
-          Sign Up
-        </Link>
-      </div>
+    <main className="page-center">
+      <div className="card" style={{ maxWidth: '600px', textAlign: 'center' }}>
+        <h1 style={{ marginBottom: '1rem', color: 'var(--accent)' }}>🚕 Welcome to OiTesla</h1>
+        <p style={{ marginBottom: '2rem' }}>
+          Dhaka's premier Tesla Rickshaw ride-pooling service. 
+          Share a ride, save money, and maximize capacity!
+        </p>
+        
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+          <Link href="/login" className="btn btn-primary btn-lg">
+            Login
+          </Link>
+          <Link href="/signup" className="btn btn-ghost btn-lg">
+            Sign Up
+          </Link>
+        </div>
 
-      <div style={{ marginTop: '60px', textAlign: 'left', padding: '20px', background: '#f9f9f9', borderRadius: '8px' }}>
-        <h3>Demo Credentials</h3>
-        <p><strong>Driver:</strong> jashim@oitesla.com (Pass: hashedpassword123)</p>
-        <p><strong>Passenger:</strong> nusrat@oitesla.com (Pass: hashedpassword123)</p>
-        <p><strong>Passenger:</strong> rafiq@oitesla.com (Pass: hashedpassword123)</p>
+        <div className="demo-box" style={{ marginTop: '3rem', textAlign: 'left' }}>
+          <h4>Demo Credentials</h4>
+          <div className="cred"><span className="role">Driver:</span> <code>jashim@oitesla.com</code></div>
+          <div className="cred"><span className="role">Passenger:</span> <code>nusrat@oitesla.com</code></div>
+          <div className="cred"><span className="role">Passenger:</span> <code>rafiq@oitesla.com</code></div>
+          <p style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>Password for all: <code>hashedpassword123</code></p>
+        </div>
       </div>
     </main>
   )

@@ -40,31 +40,44 @@ export default function Login() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '400px', margin: '0 auto' }}>
-      <h1>Login</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <input 
-          type="email" 
-          placeholder="Email" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-          required 
-          style={{ padding: '0.5rem' }}
-        />
-        <input 
-          type="password" 
-          placeholder="Password" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-          required 
-          style={{ padding: '0.5rem' }}
-        />
-        <button type="submit" style={{ padding: '0.5rem' }}>Login</button>
-      </form>
-      <p style={{ marginTop: '1rem' }}>
-        Don't have an account? <Link href="/signup">Sign up</Link>
-      </p>
+    <div className="page-center">
+      <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
+        <h1 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Welcome Back</h1>
+        
+        {error && <div className="alert alert-error">{error}</div>}
+        
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input 
+              className="form-input"
+              type="email" 
+              placeholder="Enter your email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input 
+              className="form-input"
+              type="password" 
+              placeholder="Enter your password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+            />
+          </div>
+          <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '0.5rem' }}>
+            Login to OiTesla
+          </button>
+        </form>
+        
+        <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem' }}>
+          Don't have an account? <Link href="/signup">Sign up here</Link>
+        </p>
+      </div>
     </div>
   );
 }

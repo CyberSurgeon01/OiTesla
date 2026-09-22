@@ -42,47 +42,66 @@ export default function Signup() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '400px', margin: '0 auto' }}>
-      <h1>Sign Up</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <input 
-          type="text" 
-          placeholder="Name" 
-          value={name} 
-          onChange={(e) => setName(e.target.value)} 
-          required 
-          style={{ padding: '0.5rem' }}
-        />
-        <input 
-          type="email" 
-          placeholder="Email" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-          required 
-          style={{ padding: '0.5rem' }}
-        />
-        <input 
-          type="password" 
-          placeholder="Password" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-          required 
-          style={{ padding: '0.5rem' }}
-        />
-        <select 
-          value={role} 
-          onChange={(e) => setRole(e.target.value)} 
-          style={{ padding: '0.5rem' }}
-        >
-          <option value="PASSENGER">Passenger</option>
-          <option value="DRIVER">Driver</option>
-        </select>
-        <button type="submit" style={{ padding: '0.5rem' }}>Sign Up</button>
-      </form>
-      <p style={{ marginTop: '1rem' }}>
-        Already have an account? <Link href="/login">Login</Link>
-      </p>
+    <div className="page-center">
+      <div className="card" style={{ width: '100%', maxWidth: '440px' }}>
+        <h1 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Create Account</h1>
+        
+        {error && <div className="alert alert-error">{error}</div>}
+        
+        <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="form-group">
+            <label className="form-label">Full Name</label>
+            <input 
+              className="form-input"
+              type="text" 
+              placeholder="e.g. John Doe" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input 
+              className="form-input"
+              type="email" 
+              placeholder="you@example.com" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input 
+              className="form-input"
+              type="password" 
+              placeholder="Min 6 characters" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">I am a...</label>
+            <select 
+              className="form-select"
+              value={role} 
+              onChange={(e) => setRole(e.target.value)} 
+            >
+              <option value="PASSENGER">Passenger (Rider)</option>
+              <option value="DRIVER">Driver (Rickshaw Owner)</option>
+            </select>
+          </div>
+          <button type="submit" className="btn btn-primary btn-block" style={{ marginTop: '0.5rem' }}>
+            Sign Up
+          </button>
+        </form>
+        
+        <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem' }}>
+          Already have an account? <Link href="/login">Log in here</Link>
+        </p>
+      </div>
     </div>
   );
 }

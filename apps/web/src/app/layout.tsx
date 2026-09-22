@@ -1,3 +1,5 @@
+import './globals.css'
+
 export const metadata = {
   title: 'OiTesla Web',
   description: 'OiTesla ride-pooling MVP',

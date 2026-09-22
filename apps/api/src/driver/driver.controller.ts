@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../prisma';
-import { VehicleStatus, RideStatus, PoolStatus } from '@prisma/client';
+import { VehicleStatus, RideStatus, PoolStatus, PaymentMethod } from '@prisma/client';
 
-// Toggle ONLINE / OFFLINE
 export const updateStatus = async (req: any, res: Response) => {
   try {
     const { status } = req.body;
@@ -12,7 +11,6 @@ export const updateStatus = async (req: any, res: Response) => {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
-    // Assume one vehicle per driver for MVP
     const vehicle = await prisma.vehicle.findFirst({ where: { driver_id } });
     if (!vehicle) return res.status(404).json({ error: 'Vehicle not found' });
 
@@ -28,7 +26,6 @@ export const updateStatus = async (req: any, res: Response) => {
   }
 };
 
-// See pending/active pools relevant to them
 export const getActivePools = async (req: any, res: Response) => {
   try {
     const driver_id = req.user.id;
@@ -55,11 +52,10 @@ export const getActivePools = async (req: any, res: Response) => {
   }
 };
 
-// Transition pool status (affects all active rides)
 export const transitionPool = async (req: any, res: Response) => {
   try {
     const { pool_id } = req.params;
-    const { status } = req.body; // Target RideStatus for the pool's requests
+    const { status } = req.body;
     const driver_id = req.user.id;
 
     const vehicle = await prisma.vehicle.findFirst({ where: { driver_id } });
@@ -71,12 +67,8 @@ export const transitionPool = async (req: any, res: Response) => {
     });
 
     if (!pool) return res.status(404).json({ error: 'Active pool not found for this vehicle' });
-
-    // Determine current overall state based on the first non-cancelled ride
-    // In our model, all non-cancelled rides transition together.
     if (pool.rideRequests.length === 0) return res.status(400).json({ error: 'Pool is empty' });
 
-    // Valid transitions
     const validTransitions: Record<string, string[]> = {
       [RideStatus.REQUESTED]: [RideStatus.ACCEPTED],
       [RideStatus.MATCHED]: [RideStatus.ACCEPTED],
@@ -92,7 +84,6 @@ export const transitionPool = async (req: any, res: Response) => {
     if (status === RideStatus.STARTED) updateData.started_at = now;
     if (status === RideStatus.COMPLETED) updateData.completed_at = now;
 
-    // Use a transaction to update all relevant rides
     await prisma.$transaction(async (tx) => {
       for (const ride of pool.rideRequests) {
         if (!validTransitions[ride.status] || !validTransitions[ride.status].includes(status)) {
@@ -104,12 +95,27 @@ export const transitionPool = async (req: any, res: Response) => {
         });
       }
 
-      // If completing, also complete the pool
       if (status === RideStatus.COMPLETED) {
         await tx.pool.update({
           where: { id: pool.id },
           data: { status: PoolStatus.COMPLETED }
         });
+
+        // Deduct from wallet if passenger chose TESLA_PAY
+        for (const ride of pool.rideRequests) {
+          if (ride.payment_method === PaymentMethod.TESLA_PAY) {
+            // Deduct from passenger
+            await tx.user.update({
+              where: { id: ride.passenger_id },
+              data: { wallet_balance: { decrement: ride.fare_amount } }
+            });
+            // Credit to driver
+            await tx.user.update({
+              where: { id: driver_id },
+              data: { wallet_balance: { increment: ride.fare_amount } }
+            });
+          }
+        }
       }
     });
 
@@ -123,7 +129,6 @@ export const transitionPool = async (req: any, res: Response) => {
   }
 };
 
-// Driver sees their current passengers & history
 export const getHistory = async (req: any, res: Response) => {
   try {
     const driver_id = req.user.id;

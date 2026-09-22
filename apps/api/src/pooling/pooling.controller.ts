@@ -1,18 +1,19 @@
 import { Request, Response } from 'express';
 import { prisma } from '../prisma';
 import { isDestinationCompatible } from './geography';
+import { calculateFare } from '../fare/fare.calculator';
 import { RideStatus, PoolStatus } from '@prisma/client';
 
 export const requestRide = async (req: any, res: Response) => {
   try {
-    const { pickup_zone, destination_zone, seats_requested = 1 } = req.body;
+    const { pickup_zone, destination_zone, seats_requested = 1, payment_method = 'CASH' } = req.body;
     const passenger_id = req.user.id;
 
     if (!pickup_zone || !destination_zone || seats_requested < 1) {
       return res.status(400).json({ error: 'Invalid ride parameters' });
     }
 
-    const fare_amount = 2500; 
+    const fare_amount = calculateFare(pickup_zone, destination_zone, true); 
 
     const activePools = await prisma.pool.findMany({
       where: { status: PoolStatus.ACTIVE, vehicle: { status: 'ONLINE' } },
@@ -95,6 +96,7 @@ export const requestRide = async (req: any, res: Response) => {
           destination_zone,
           seats_requested,
           fare_amount,
+          payment_method,
           status: RideStatus.REQUESTED
         }
       });

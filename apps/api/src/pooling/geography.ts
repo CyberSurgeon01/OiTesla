@@ -1,7 +1,3 @@
-// Simplified Dhaka zones mapping for OiTesla MVP.
-// We define compatibility as: if a pool is heading from pickup -> pool_destination,
-// it can accept a new rider going from pickup -> new_destination IF new_destination is compatible.
-
 export const ZONES = ['Banani', 'Gulshan', 'Mohakhali', 'Dhanmondi', 'Mirpur', 'Uttara', 'Farmgate', 'Bashundhara'];
 
 // Mapping: pickupZone -> { existingDestination: [compatibleDestinations] }
@@ -11,22 +7,31 @@ export const COMPATIBILITY_MAP: Record<string, Record<string, string[]>> = {
     'Gulshan': ['Gulshan', 'Mohakhali', 'Bashundhara'],
     'Farmgate': ['Farmgate', 'Mohakhali', 'Dhanmondi'],
     'Dhanmondi': ['Dhanmondi', 'Farmgate'],
-  },
-  // Other zones can be added symmetrically or arbitrarily for MVP
+  }
 };
 
 /**
- * Checks if a new destination is compatible with an existing pool's destinations,
- * given the same pickup zone.
+ * EXACT COMPATIBILITY RULE:
+ * 1. The pickup zones must match exactly.
+ * 2. For every existing passenger destination in the pool, the new destination must be 
+ *    listed as compatible.
  * 
- * EXACT RULE:
- * 1. Pickup zones must match exactly.
- * 2. The new destination must be in the list of compatible destinations for ALL existing destinations in the pool.
- *    (For MVP, if we check against the primary/first request's destination, that's often enough, but checking all is safer).
+ * HAND-TRACE FOR NUSRAT, RAFIQ, AND SHIRIN:
+ * - Nusrat requests: Banani -> Mohakhali. No active pool exists, so Pool 1 is created on Bullet.
+ *   Pool 1 destinations: ['Mohakhali'].
+ * - Rafiq requests: Banani -> Gulshan. 
+ *   Evaluates: isDestinationCompatible('Banani', ['Mohakhali'], 'Gulshan')
+ *   `COMPATIBILITY_MAP['Banani']['Mohakhali']` returns `['Mohakhali', 'Gulshan', 'Farmgate']`.
+ *   Since 'Gulshan' is in that array, it returns true! Rafiq joins Pool 1.
+ *   Pool 1 destinations: ['Mohakhali', 'Gulshan'].
+ * - Shirin requests: Banani -> Dhanmondi (let's assume she tries this).
+ *   Evaluates: isDestinationCompatible('Banani', ['Mohakhali', 'Gulshan'], 'Dhanmondi')
+ *   Checks 'Mohakhali' array -> 'Dhanmondi' is NOT in it. Returns false.
+ *   Shirin cannot join Pool 1, so she spawns Pool 2 (if a vehicle is free) or fails.
  */
 export const isDestinationCompatible = (pickupZone: string, existingDestinations: string[], newDestination: string): boolean => {
   const pickupMap = COMPATIBILITY_MAP[pickupZone];
-  if (!pickupMap) return existingDestinations.includes(newDestination); // Strict match if no map
+  if (!pickupMap) return existingDestinations.includes(newDestination);
 
   for (const existingDest of existingDestinations) {
     const compatibleWithExisting = pickupMap[existingDest] || [existingDest];

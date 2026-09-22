@@ -1,0 +1,175 @@
+import { Request, Response } from 'express';
+import { prisma } from '../prisma';
+import { isDestinationCompatible } from './geography';
+import { RideStatus, PoolStatus } from '@prisma/client';
+
+export const requestRide = async (req: any, res: Response) => {
+  try {
+    const { pickup_zone, destination_zone, seats_requested = 1 } = req.body;
+    const passenger_id = req.user.id;
+
+    if (!pickup_zone || !destination_zone || seats_requested < 1) {
+      return res.status(400).json({ error: 'Invalid ride parameters' });
+    }
+
+    // Default fare formula for MVP:
+    // Base 20 BDT (2000 poysha) + 10 BDT (1000 poysha) distance - 5 BDT (500 poysha) pool discount
+    const fare_amount = 2500; 
+
+    // Find all ACTIVE pools with their current ride requests
+    const activePools = await prisma.pool.findMany({
+      where: { status: PoolStatus.ACTIVE, vehicle: { status: 'ONLINE' } },
+      include: { rideRequests: { where: { status: { notIn: [RideStatus.CANCELLED, RideStatus.COMPLETED] } } }, vehicle: true }
+    });
+
+    let matchedPoolId: number | null = null;
+    let matchedVehicleId: number | null = null;
+
+    // Evaluate compatibility
+    for (const pool of activePools) {
+      if (pool.rideRequests.length === 0) continue; // Should not happen in practice
+      
+      const firstPickup = pool.rideRequests[0].pickup_zone;
+      if (firstPickup !== pickup_zone) continue; // Must have same pickup zone
+
+      const existingDests = pool.rideRequests.map(r => r.destination_zone);
+      if (!isDestinationCompatible(pickup_zone, existingDests, destination_zone)) continue;
+
+      // Check tentative capacity before transaction
+      const usedSeats = pool.rideRequests.reduce((sum, r) => sum + r.seats_requested, 0);
+      if (usedSeats + seats_requested <= pool.vehicle.seat_capacity) {
+        matchedPoolId = pool.id;
+        matchedVehicleId = pool.vehicle_id;
+        break; // Found a compatible pool
+      }
+    }
+
+    // Transactionally attempt to join the matched pool OR create a new one
+    const result = await prisma.$transaction(async (tx) => {
+      let poolToUse = matchedPoolId;
+      let vehicleToUse = matchedVehicleId;
+
+      if (poolToUse && vehicleToUse) {
+        // Lock the vehicle to serialize capacity checks
+        await tx.$queryRaw`SELECT * FROM "Vehicle" WHERE id = ${vehicleToUse} FOR UPDATE`;
+        
+        // Re-check capacity now that we have the lock
+        const pool = await tx.pool.findUnique({
+          where: { id: poolToUse },
+          include: { rideRequests: { where: { status: { notIn: ['CANCELLED', 'COMPLETED'] } } }, vehicle: true }
+        });
+
+        if (!pool || pool.status !== 'ACTIVE') throw new Error('Pool is no longer active');
+        
+        const usedSeats = pool.rideRequests.reduce((sum, r) => sum + r.seats_requested, 0);
+        if (usedSeats + seats_requested > pool.vehicle.seat_capacity) {
+          // Capacity filled by a concurrent transaction, fallback to finding a new vehicle
+          poolToUse = null;
+          vehicleToUse = null;
+        }
+      }
+
+      if (!poolToUse) {
+        // Need a new vehicle that is ONLINE and has no ACTIVE pool
+        const availableVehicles: any[] = await tx.$queryRaw`
+          SELECT v.* FROM "Vehicle" v
+          LEFT JOIN "Pool" p ON v.id = p.vehicle_id AND p.status = 'ACTIVE'
+          WHERE v.status = 'ONLINE' AND p.id IS NULL
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        `;
+
+        if (availableVehicles.length === 0) {
+          throw new Error('No available vehicles found');
+        }
+
+        const vehicle = availableVehicles[0];
+        
+        if (seats_requested > vehicle.seat_capacity) {
+          throw new Error('Requested seats exceed vehicle capacity');
+        }
+
+        const newPool = await tx.pool.create({
+          data: { vehicle_id: vehicle.id, status: 'ACTIVE' }
+        });
+
+        poolToUse = newPool.id;
+        vehicleToUse = vehicle.id;
+      }
+
+      // We have a pool with locked capacity guarantee, create the RideRequest
+      const ride = await tx.rideRequest.create({
+        data: {
+          passenger_id,
+          pool_id: poolToUse,
+          pickup_zone,
+          destination_zone,
+          seats_requested,
+          fare_amount,
+          status: 'REQUESTED'
+        }
+      });
+
+      return { ride, pool_id: poolToUse };
+    });
+
+    res.status(201).json(result);
+  } catch (error: any) {
+    console.error(error);
+    if (error.message.includes('No available vehicles') || error.message.includes('capacity')) {
+      return res.status(409).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Failed to request ride' });
+  }
+};
+
+export const updateRideStatus = async (req: any, res: Response) => {
+  try {
+    const { ride_id } = req.params;
+    const { status } = req.body;
+    
+    // Validate role/ownership
+    const userRole = req.user.role;
+    
+    const validTransitions: Record<string, string[]> = {
+      'REQUESTED': ['MATCHED', 'ACCEPTED', 'CANCELLED'],
+      'MATCHED': ['ACCEPTED', 'CANCELLED'],
+      'ACCEPTED': ['DRIVER_ARRIVED', 'CANCELLED'],
+      'DRIVER_ARRIVED': ['STARTED', 'CANCELLED'],
+      'STARTED': ['COMPLETED'],
+      'COMPLETED': [],
+      'CANCELLED': []
+    };
+
+    const ride = await prisma.rideRequest.findUnique({ where: { id: parseInt(ride_id) } });
+    if (!ride) return res.status(404).json({ error: 'Ride not found' });
+    
+    // Check if transition is valid
+    if (!validTransitions[ride.status].includes(status)) {
+      return res.status(400).json({ error: `Invalid transition from ${ride.status} to ${status}` });
+    }
+    
+    // Passengers can only cancel. Drivers move state forward.
+    if (userRole === 'PASSENGER' && status !== 'CANCELLED') {
+      return res.status(403).json({ error: 'Passengers can only transition status to CANCELLED' });
+    }
+
+    const updateData: any = { status };
+    if (status === 'MATCHED') updateData.matched_at = new Date();
+    if (status === 'ACCEPTED') updateData.accepted_at = new Date();
+    if (status === 'DRIVER_ARRIVED') updateData.arrived_at = new Date();
+    if (status === 'STARTED') updateData.started_at = new Date();
+    if (status === 'COMPLETED') updateData.completed_at = new Date();
+    if (status === 'CANCELLED') updateData.cancelled_at = new Date();
+
+    const updatedRide = await prisma.rideRequest.update({
+      where: { id: parseInt(ride_id) },
+      data: updateData
+    });
+    
+    res.json(updatedRide);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update ride status' });
+  }
+};

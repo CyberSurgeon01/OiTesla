@@ -1,0 +1,105 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+enum Role {
+  PASSENGER
+  DRIVER
+}
+
+enum VehicleStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum RideStatus {
+  REQUESTED
+  MATCHED
+  ACCEPTED
+  DRIVER_ARRIVED
+  STARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum PoolStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id             Int           @id @default(autoincrement())
+  role           Role
+  name           String
+  email          String        @unique
+  password_hash  String
+  wallet_balance Int           @default(0) // Stored in poysha
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  vehicles       Vehicle[]     @relation("DriverVehicles")
+  rideRequests   RideRequest[] @relation("PassengerRides")
+}
+
+model Vehicle {
+  id            Int           @id @default(autoincrement())
+  driver_id     Int
+  name          String
+  seat_capacity Int
+  status        VehicleStatus @default(OFFLINE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  driver        User          @relation("DriverVehicles", fields: [driver_id], references: [id])
+  pools         Pool[]
+
+  @@index([driver_id])
+}
+
+model Pool {
+  id         Int        @id @default(autoincrement())
+  vehicle_id Int
+  status     PoolStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  vehicle      Vehicle       @relation(fields: [vehicle_id], references: [id])
+  rideRequests RideRequest[]
+
+  @@index([vehicle_id])
+  @@index([status])
+}
+
+model RideRequest {
+  id               Int        @id @default(autoincrement())
+  passenger_id     Int
+  pool_id          Int?
+  pickup_zone      String
+  destination_zone String
+  seats_requested  Int
+  status           RideStatus @default(REQUESTED)
+  fare_amount      Int        // Stored in poysha
+  
+  requested_at     DateTime   @default(now())
+  matched_at       DateTime?
+  accepted_at      DateTime?
+  arrived_at       DateTime?
+  started_at       DateTime?
+  completed_at     DateTime?
+  cancelled_at     DateTime?
+
+  passenger User  @relation("PassengerRides", fields: [passenger_id], references: [id])
+  pool      Pool? @relation(fields: [pool_id], references: [id])
+
+  @@index([passenger_id])
+  @@index([pool_id])
+  @@index([status])
+  @@index([pickup_zone, destination_zone])
+}

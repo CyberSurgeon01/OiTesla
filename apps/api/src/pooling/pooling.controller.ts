@@ -64,8 +64,11 @@ export const requestRide = async (req: any, res: Response) => {
       if (!poolToUse) {
         const availableVehicles: any[] = await tx.$queryRaw`
           SELECT v.* FROM "Vehicle" v
-          LEFT JOIN "Pool" p ON v.id = p.vehicle_id AND p.status = 'ACTIVE'
-          WHERE v.status = 'ONLINE' AND p.id IS NULL
+          WHERE v.status = 'ONLINE' 
+          AND NOT EXISTS (
+            SELECT 1 FROM "Pool" p 
+            WHERE p.vehicle_id = v.id AND p.status = 'ACTIVE'
+          )
           LIMIT 1
           FOR UPDATE SKIP LOCKED
         `;

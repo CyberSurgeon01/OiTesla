@@ -145,6 +145,10 @@ Due to recent shifts in cloud provider policies (Heroku, Render, Railway restric
 2. **Simplified Geography**: Built a fixed `COMPATIBILITY_MAP` matrix for zones instead of relying on real-world GIS routing, allowing us to focus entirely on the core capacity algorithms and race-condition safety.
 3. **Optimistic Locking vs Pessimistic Locking**: Opted for pessimistic locking (`SELECT ... FOR UPDATE` and `SKIP LOCKED`) when booking rides, as it prevents overlapping reads during extreme concurrency bursts (e.g. Nusrat and Shirin clicking "Book" on the exact same millisecond).
 
+## Viral Scaling Architecture
+Curious how OiTesla transitions from a fixed-zone MVP to supporting 1M passengers? Check out the [Scaling Document](SCALING.md).
+
+
 ## Known Limitations & Next Improvements
 - **GIS Routing**: Replacing the static zone matrix with Google Maps/Mapbox for live ETA and dynamic overlapping route calculations.
 - **WebSocket / SSE Updates**: Currently, the dashboard relies on 5-second HTTP polling. WebSockets would provide instant state transitions.

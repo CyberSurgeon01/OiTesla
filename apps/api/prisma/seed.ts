@@ -19,16 +19,17 @@ async function main() {
   });
   console.log('Driver: Jashim');
 
-  const bullet = await prisma.vehicle.upsert({
-    where: { driver_id: jashim.id },
-    update: {},
-    create: {
-      driver_id: jashim.id,
-      name: 'Bullet',
-      seat_capacity: 3,
-      status: 'ONLINE',
-    },
-  });
+  let bullet = await prisma.vehicle.findFirst({ where: { driver_id: jashim.id } });
+  if (!bullet) {
+    bullet = await prisma.vehicle.create({
+      data: {
+        driver_id: jashim.id,
+        name: 'Bullet',
+        seat_capacity: 3,
+        status: 'ONLINE',
+      },
+    });
+  }
   console.log('Vehicle: Bullet');
 
   const passengers = [
@@ -54,7 +55,7 @@ async function main() {
 
   // Generate example completed ride for Nusrat
   const nusrat = await prisma.user.findUnique({ where: { email: 'nusrat@oitesla.com' } });
-  if (nusrat) {
+  if (nusrat && bullet) {
     const existingRide = await prisma.rideRequest.findFirst({
       where: { passenger_id: nusrat.id, status: RideStatus.COMPLETED }
     });

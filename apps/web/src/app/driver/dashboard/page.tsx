@@ -265,7 +265,7 @@ export default function DriverDashboard() {
                       <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-2">
                           <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-                          <CardTitle className="text-base font-semibold">Live Trip</CardTitle>
+                          <CardTitle className="text-base font-semibold">Live Trip <span className="text-muted-foreground font-normal ml-2 text-sm">({seatsUsed}/{pool.vehicle.seat_capacity} seats)</span></CardTitle>
                         </div>
                         <div className="flex space-x-1">
                           {Array.from({ length: pool.vehicle.seat_capacity }).map((_, i) => (

@@ -8,13 +8,67 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { TopBar } from '@/components/TopBar';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Minus, Plus, MapPin, Navigation, Car, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Minus, Plus, MapPin, Navigation, Car, AlertCircle, ChevronDown, ChevronUp, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 const ZONES = ['Banani', 'Gulshan', 'Mohakhali', 'Dhanmondi', 'Mirpur', 'Uttara', 'Farmgate', 'Bashundhara'];
 
 const STEPS = ['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'];
+
+const DISTANCE_MAP: Record<string, Record<string, number>> = {
+  'Banani': { 'Mohakhali': 2, 'Gulshan': 3, 'Farmgate': 5, 'Dhanmondi': 8 },
+  'Gulshan': { 'Mohakhali': 3, 'Bashundhara': 6, 'Banani': 3 },
+  'Mohakhali': { 'Farmgate': 3, 'Gulshan': 3, 'Banani': 2 },
+  'Farmgate': { 'Dhanmondi': 3, 'Mohakhali': 3, 'Banani': 5 },
+  'Dhanmondi': { 'Farmgate': 3, 'Banani': 8 }
+};
+
+function calculateFarePreview(pickup: string, dest: string, seats: number) {
+  if (pickup === dest) return null;
+  const distanceKm = DISTANCE_MAP[pickup]?.[dest] || 5;
+  const baseFare = 30; // BDT
+  const distanceCharge = distanceKm * 15;
+  const poolDiscount = 10;
+  
+  // Base fare is per ride, but let's assume the backend calculates per ride, not per seat (wait, backend doesn't multiply by seats? Let's check backend... The backend didn't multiply by seats_requested in the file! It's flat per passenger group). Let's assume flat.
+  let fare = baseFare + distanceCharge - poolDiscount;
+  if (fare < 20) fare = 20;
+  
+  return {
+    baseFare,
+    distanceCharge,
+    distanceKm,
+    poolDiscount,
+    total: fare
+  };
+}
+
+function ZoneChips({ value, onChange, label }: { value: string, onChange: (v: string) => void, label: string }) {
+  return (
+    <div className="space-y-3">
+      <Label className="text-sm text-muted-foreground uppercase tracking-wider">{label}</Label>
+      <div className="flex flex-wrap gap-2">
+        {ZONES.map(z => (
+          <button
+            key={z}
+            type="button"
+            onClick={() => onChange(z)}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
+              value === z 
+                ? "bg-electric text-white border-electric shadow-md" 
+                : "bg-background text-foreground border-border hover:border-electric/50 hover:bg-muted"
+            )}
+          >
+            {value === z && <Check className="inline-block mr-1 h-3 w-3" />}
+            {z}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function PassengerDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -75,6 +129,11 @@ export default function PassengerDashboard() {
 
   const requestRide = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pickup === destination) {
+      toast({ title: "Invalid Route", description: "Pickup and destination cannot be the same.", variant: "destructive" });
+      return;
+    }
+    
     setRequesting(true);
     const token = localStorage.getItem('token');
     
@@ -144,6 +203,7 @@ export default function PassengerDashboard() {
   const canCancel = activeRide && ['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED'].includes(activeRide.status);
   const isCancelled = activeRide?.status === 'CANCELLED';
   const currentStepIndex = activeRide ? STEPS.indexOf(activeRide.status) : -1;
+  const farePreview = calculateFarePreview(pickup, destination, seats);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -159,93 +219,105 @@ export default function PassengerDashboard() {
           </div>
 
           {!activeRide ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Where to?</CardTitle>
-                <CardDescription>Request a pooled ride and save</CardDescription>
+            <Card className="overflow-hidden shadow-sm">
+              <CardHeader className="bg-muted/30 border-b pb-6">
+                <CardTitle className="text-xl">Request a Ride</CardTitle>
+                <CardDescription>Select your zones to find a shared Tesla</CardDescription>
               </CardHeader>
-              <CardContent>
-                <form id="ride-form" onSubmit={requestRide} className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Pickup Location</Label>
-                        <Select value={pickup} onValueChange={setPickup}>
-                          <SelectTrigger>
-                            <div className="flex items-center">
-                              <MapPin className="mr-2 h-4 w-4 opacity-50" />
-                              <SelectValue placeholder="Select pickup" />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ZONES.map(z => <SelectItem key={z} value={z}>{z}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Destination</Label>
-                        <Select value={destination} onValueChange={setDestination}>
-                          <SelectTrigger>
-                            <div className="flex items-center">
-                              <Navigation className="mr-2 h-4 w-4 opacity-50" />
-                              <SelectValue placeholder="Select destination" />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ZONES.map(z => <SelectItem key={z} value={z}>{z}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+              <CardContent className="p-6">
+                <form id="ride-form" onSubmit={requestRide} className="space-y-8">
+                  <div className="space-y-6 relative">
+                    <ZoneChips label="Pickup Location" value={pickup} onChange={setPickup} />
+                    
+                    <div className="absolute left-4 top-16 bottom-16 w-0.5 bg-border -z-10 hidden sm:block" />
+                    
+                    <ZoneChips label="Destination" value={destination} onChange={setDestination} />
+                  </div>
+
+                  <hr className="border-border" />
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-3">
+                      <Label className="text-sm text-muted-foreground uppercase tracking-wider">Passengers</Label>
+                      <div className="flex items-center space-x-4 bg-muted/30 p-2 rounded-lg border">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-full"
+                          onClick={() => setSeats(Math.max(1, seats - 1))}
+                          disabled={seats <= 1 || requesting}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="text-lg font-medium w-8 text-center">{seats}</span>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-8 w-8 rounded-full"
+                          onClick={() => setSeats(Math.min(3, seats + 1))}
+                          disabled={seats >= 3 || requesting}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Seats Required</Label>
-                        <div className="flex items-center space-x-4">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="icon" 
-                            onClick={() => setSeats(Math.max(1, seats - 1))}
-                            disabled={seats <= 1}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <span className="text-xl font-medium w-8 text-center">{seats}</span>
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            size="icon" 
-                            onClick={() => setSeats(Math.min(3, seats + 1))}
-                            disabled={seats >= 3}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Payment Method</Label>
-                        <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="CASH">Cash</SelectItem>
-                            <SelectItem value="TESLA_PAY">TeslaPay Wallet</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    
+                    <div className="space-y-3">
+                      <Label className="text-sm text-muted-foreground uppercase tracking-wider">Payment</Label>
+                      <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled={requesting}>
+                        <SelectTrigger className="bg-muted/30">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CASH">Cash</SelectItem>
+                          <SelectItem value="TESLA_PAY">TeslaPay Wallet</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
+
+                  {/* Fare Preview */}
+                  {farePreview ? (
+                    <div className="mt-4 rounded-xl bg-electric/5 border border-electric/20 p-4">
+                      <div className="flex justify-between items-end mb-4">
+                        <div>
+                          <h4 className="font-semibold text-electric">Estimated Fare</h4>
+                          <p className="text-sm text-muted-foreground">For {seats} seat{seats > 1 ? 's' : ''}</p>
+                        </div>
+                        <div className="text-3xl font-bold text-electric tracking-tight">৳{farePreview.total.toFixed(2)}</div>
+                      </div>
+                      
+                      <div className="space-y-2 text-sm border-t border-electric/10 pt-3">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Base Fare</span>
+                          <span>৳{farePreview.baseFare.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Distance ({farePreview.distanceKm} km)</span>
+                          <span>৳{farePreview.distanceCharge.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-success font-medium">
+                          <span>Pool Discount</span>
+                          <span>- ৳{farePreview.poolDiscount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                     <div className="mt-4 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive flex items-center">
+                       <AlertCircle className="mr-2 h-5 w-5" />
+                       Pickup and destination must be different.
+                     </div>
+                  )}
+
                 </form>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="bg-muted/30 border-t p-6">
                 <Button 
                   type="submit" 
                   form="ride-form" 
-                  className="w-full" 
+                  className="w-full font-semibold" 
                   size="lg" 
                   variant="electric"
                   disabled={requesting || pickup === destination}
@@ -326,13 +398,13 @@ export default function PassengerDashboard() {
                   )}
 
                   {/* Fare */}
-                  <div className="mt-12 rounded-xl bg-muted/50 p-4">
+                  <div className="mt-12 rounded-xl bg-muted/50 p-4 border border-border">
                     <div className="flex items-center justify-between cursor-pointer" onClick={() => setShowFareBreakdown(!showFareBreakdown)}>
                       <div>
-                        <div className="text-sm text-muted-foreground font-medium">Estimated Fare</div>
+                        <div className="text-sm text-muted-foreground font-medium uppercase tracking-wide">Estimated Fare</div>
                         <div className="text-3xl font-bold tracking-tight mt-1">৳{(activeRide.fare_amount / 100).toFixed(2)}</div>
                       </div>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" className="hover:bg-muted">
                         {showFareBreakdown ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                       </Button>
                     </div>
@@ -353,7 +425,7 @@ export default function PassengerDashboard() {
                 </div>
               </CardContent>
               {canCancel && (
-                <CardFooter className="bg-muted/30 p-4">
+                <CardFooter className="bg-muted/30 p-4 border-t">
                   <Button 
                     variant="outline" 
                     className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"

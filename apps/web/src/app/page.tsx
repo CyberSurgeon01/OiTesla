@@ -1,8 +1,42 @@
+"use client";
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 export default function Home() {
+  const [showContent, setShowContent] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowContent(true);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!showContent) {
+    return (
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#05050A]">
+        <style>{`
+          @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+          }
+          .animate-float {
+            animation: float 2.5s ease-in-out infinite;
+          }
+        `}</style>
+        <div className="animate-float flex flex-col items-center gap-4">
+          <div className="w-4 h-4 rounded-full bg-[#F59E0B] shadow-[0_0_20px_rgba(245,158,11,0.8)] animate-pulse" />
+          <h1 className="text-6xl sm:text-8xl font-black tracking-tighter text-white">
+            OiTesla
+          </h1>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden bg-[#05050A] text-white px-6 py-24 selection:bg-[#4F6BFF]/30">
+    <div className="animate-in fade-in zoom-in-95 duration-1000 relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden bg-[#05050A] text-white px-6 py-24 selection:bg-[#4F6BFF]/30">
       
       {/* Simple Minimal Top Nav */}
       <nav className="absolute top-0 left-0 w-full p-6 sm:px-12 flex justify-between items-center z-50">
@@ -14,7 +48,6 @@ export default function Home() {
           GitHub
         </a>
       </nav>
-
 
       {/* Main Content Container */}
       <div className="z-10 flex w-full max-w-lg flex-col items-center justify-center space-y-12 text-center mt-4">
@@ -75,7 +108,6 @@ export default function Home() {
             </g>
           </svg>
         </div>
-
 
       </div>
     </div>

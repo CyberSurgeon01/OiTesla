@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -47,71 +48,65 @@ export default function Login() {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden bg-[#05050A] text-white px-6 selection:bg-[#4F6BFF]/30">
+    <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden bg-[#0A0D0B] text-white px-6 selection:bg-[#10B981]/30">
       
-      {/* Back to Home Navigation */}
-      <nav className="absolute top-0 left-0 w-full p-6 sm:px-12 flex justify-start items-center z-50">
-        <Link href="/" className="group flex items-center text-sm font-semibold text-gray-400 hover:text-white transition-colors">
-          <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          Back to Home
-        </Link>
-      </nav>
-
-
-      {/* Glassmorphism Auth Card */}
-      <div className="z-10 w-full max-w-[420px] rounded-[2rem] border border-white/10 bg-white/[0.02] p-8 sm:p-10 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:bg-white/[0.03] hover:border-white/20">
-        <div className="flex flex-col space-y-2 text-center mb-10">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#4F6BFF]/10">
-            <div className="h-4 w-4 rounded-full bg-[#4F6BFF] shadow-[0_0_15px_rgba(79,107,255,1)] animate-pulse" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Welcome back</h1>
-          <p className="text-sm text-gray-400">Enter your credentials to access your account</p>
+      <div className="z-10 w-full max-w-[420px] rounded-[2rem] border border-[#1E2621] bg-[#131815] p-8 sm:p-10 shadow-2xl">
+        <div className="flex flex-col space-y-2 mb-8 text-left">
+          <h1 className="text-[22px] font-semibold tracking-tight text-[#F3F4F6]">Sign in to OiTesla</h1>
+          <p className="text-sm text-[#88928B]">Track your rides and split the fare.</p>
         </div>
         
         <form onSubmit={handleLogin} className="space-y-5">
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Email</label>
+          <div className="space-y-1.5">
+            <label htmlFor="email" className="text-sm font-medium text-[#D1D5DB]">Email</label>
             <input 
               id="email" 
               type="email" 
-              placeholder="m@example.com" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
               disabled={loading}
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3.5 text-sm text-white placeholder-gray-600 focus:border-[#4F6BFF] focus:outline-none focus:ring-1 focus:ring-[#4F6BFF] transition-all disabled:opacity-50"
+              className="w-full rounded-xl border border-[#1E2621] bg-[#0D110E] px-4 py-3.5 text-sm text-[#F3F4F6] placeholder-[#4B5563] focus:border-[#10B981] focus:outline-none focus:ring-1 focus:ring-[#10B981] transition-all disabled:opacity-50"
             />
           </div>
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Password</label>
-            <input 
-              id="password" 
-              type="password" 
-              placeholder="••••••••"
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
-              disabled={loading}
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3.5 text-sm text-white placeholder-gray-600 focus:border-[#4F6BFF] focus:outline-none focus:ring-1 focus:ring-[#4F6BFF] transition-all disabled:opacity-50"
-            />
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="text-sm font-medium text-[#D1D5DB]">Password</label>
+            <div className="relative">
+              <input 
+                id="password" 
+                type={showPassword ? "text" : "password"}
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+                disabled={loading}
+                className="w-full rounded-xl border border-[#1E2621] bg-[#0D110E] pl-4 pr-11 py-3.5 text-sm text-[#F3F4F6] placeholder-[#4B5563] focus:border-[#10B981] focus:outline-none focus:ring-1 focus:ring-[#10B981] transition-all disabled:opacity-50"
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[#4B5563] hover:text-[#D1D5DB] transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
           
           <div className="pt-2">
             <button 
               type="submit" 
               disabled={loading} 
-              className="group relative flex h-14 w-full items-center justify-center rounded-full bg-[#4F6BFF] text-base font-semibold text-white shadow-[0_0_20px_rgba(79,107,255,0.4)] transition-all duration-300 hover:bg-[#4F6BFF]/90 hover:shadow-[0_0_30px_rgba(79,107,255,0.6)] disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-1"
+              className="group relative flex w-full items-center justify-center rounded-xl bg-[#F0FDF4] px-4 py-3 text-sm font-semibold text-[#022C22] transition-all duration-300 hover:bg-[#DCFCE7] disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-              Sign In
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sign in
             </button>
           </div>
         </form>
         
-        <div className="mt-8 text-center text-sm text-gray-400">
-          Don't have an account?{" "}
-          <Link href="/signup" className="font-semibold text-white hover:text-[#4F6BFF] transition-colors underline underline-offset-4">
-            Sign up
+        <div className="mt-8 text-center text-sm text-[#88928B]">
+          New here?{" "}
+          <Link href="/signup" className="font-medium text-[#10B981] hover:text-[#34D399] transition-colors">
+            Create an account
           </Link>
         </div>
       </div>

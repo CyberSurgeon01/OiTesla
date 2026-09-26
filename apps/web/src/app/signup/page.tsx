@@ -2,13 +2,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 
 export default function Signup() {
   const [name, setName] = useState('');
@@ -54,78 +49,111 @@ export default function Signup() {
   };
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <Card className="w-full sm:w-[350px]">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Create an account</CardTitle>
-          <CardDescription className="text-center">
-            Enter your details below to create your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input 
-                id="name" 
-                type="text" 
-                placeholder="John Doe" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                required 
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="m@example.com" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                required 
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)} 
-                required 
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={setRole} disabled={loading}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PASSENGER">Passenger</SelectItem>
-                  <SelectItem value="DRIVER">Driver</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button type="submit" className="w-full" disabled={loading} variant="electric">
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Account
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/login" className="underline underline-offset-4 hover:text-primary">
-              Sign in
-            </Link>
+    <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden bg-[#05050A] text-white px-6 py-12 selection:bg-[#4F6BFF]/30">
+      
+      {/* Back to Home Navigation */}
+      <nav className="absolute top-0 left-0 w-full p-6 sm:px-12 flex justify-start items-center z-50">
+        <Link href="/" className="group flex items-center text-sm font-semibold text-gray-400 hover:text-white transition-colors">
+          <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          Back to Home
+        </Link>
+      </nav>
+
+      {/* Background Ambient Glows */}
+      <div className="absolute top-1/3 right-1/4 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-[#4F6BFF] opacity-15 blur-[120px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite]" />
+      <div className="absolute bottom-1/4 left-1/4 h-[300px] w-[300px] rounded-full bg-[#F59E0B] opacity-10 blur-[100px] pointer-events-none" />
+
+      {/* Glassmorphism Auth Card */}
+      <div className="z-10 w-full max-w-[420px] rounded-[2rem] border border-white/10 bg-white/[0.02] p-8 sm:p-10 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:bg-white/[0.03] hover:border-white/20 mt-8">
+        <div className="flex flex-col space-y-2 text-center mb-8">
+          <h1 className="text-3xl font-bold tracking-tight text-white">Create Account</h1>
+          <p className="text-sm text-gray-400">Join OiTesla to survive Dhaka traffic</p>
+        </div>
+        
+        <form onSubmit={handleSignup} className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="name" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
+            <input 
+              id="name" 
+              type="text" 
+              placeholder="John Doe" 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              required 
+              disabled={loading}
+              className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#4F6BFF] focus:outline-none focus:ring-1 focus:ring-[#4F6BFF] transition-all disabled:opacity-50"
+            />
           </div>
-        </CardFooter>
-      </Card>
+          
+          <div className="space-y-1.5">
+            <label htmlFor="email" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Email</label>
+            <input 
+              id="email" 
+              type="email" 
+              placeholder="m@example.com" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+              disabled={loading}
+              className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#4F6BFF] focus:outline-none focus:ring-1 focus:ring-[#4F6BFF] transition-all disabled:opacity-50"
+            />
+          </div>
+          
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Password</label>
+            <input 
+              id="password" 
+              type="password" 
+              placeholder="••••••••"
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+              disabled={loading}
+              className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#4F6BFF] focus:outline-none focus:ring-1 focus:ring-[#4F6BFF] transition-all disabled:opacity-50"
+            />
+          </div>
+          
+          <div className="space-y-2 pt-1">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">I am a...</label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setRole('PASSENGER')}
+                disabled={loading}
+                className={`flex-1 rounded-xl border py-3 text-sm font-semibold transition-all ${role === 'PASSENGER' ? 'border-[#4F6BFF] bg-[#4F6BFF]/20 text-white' : 'border-white/10 bg-black/40 text-gray-400 hover:bg-white/5'}`}
+              >
+                Passenger
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('DRIVER')}
+                disabled={loading}
+                className={`flex-1 rounded-xl border py-3 text-sm font-semibold transition-all ${role === 'DRIVER' ? 'border-[#F59E0B] bg-[#F59E0B]/20 text-white' : 'border-white/10 bg-black/40 text-gray-400 hover:bg-white/5'}`}
+              >
+                Driver
+              </button>
+            </div>
+          </div>
+          
+          <div className="pt-4">
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="group relative flex h-14 w-full items-center justify-center rounded-full bg-[#4F6BFF] text-base font-semibold text-white shadow-[0_0_20px_rgba(79,107,255,0.4)] transition-all duration-300 hover:bg-[#4F6BFF]/90 hover:shadow-[0_0_30px_rgba(79,107,255,0.6)] disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-1"
+            >
+              {loading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+              Create Account
+            </button>
+          </div>
+        </form>
+        
+        <div className="mt-8 text-center text-sm text-gray-400">
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-white hover:text-[#4F6BFF] transition-colors underline underline-offset-4">
+            Sign in
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

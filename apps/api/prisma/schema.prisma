@@ -5,7 +5,7 @@ datasource db {
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 enum Role {
@@ -32,6 +32,11 @@ enum PoolStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  TESLA_PAY
 }
 
 model User {
@@ -78,14 +83,15 @@ model Pool {
 }
 
 model RideRequest {
-  id               Int        @id @default(autoincrement())
+  id               Int           @id @default(autoincrement())
   passenger_id     Int
   pool_id          Int?
   pickup_zone      String
   destination_zone String
   seats_requested  Int
-  status           RideStatus @default(REQUESTED)
-  fare_amount      Int        // Stored in poysha
+  status           RideStatus    @default(REQUESTED)
+  fare_amount      Int           // Stored in poysha
+  payment_method   PaymentMethod @default(CASH)
   
   requested_at     DateTime   @default(now())
   matched_at       DateTime?

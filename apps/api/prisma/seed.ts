@@ -7,7 +7,7 @@ async function main() {
   const hash = bcrypt.hashSync('hashedpassword123', 10);
 
   const jashim = await prisma.user.upsert({
-    where: { email: 'jashim@oitesla.com' },
+    where: { email_role: { email: 'jashim@oitesla.com', role: Role.DRIVER } },
     update: { password_hash: hash },
     create: {
       email: 'jashim@oitesla.com',
@@ -15,6 +15,7 @@ async function main() {
       password_hash: hash,
       role: Role.DRIVER,
       wallet_balance: 50000,
+      is_verified: true,
     },
   });
   console.log('Driver: Jashim');
@@ -40,7 +41,7 @@ async function main() {
 
   for (const p of passengers) {
     await prisma.user.upsert({
-      where: { email: p.email },
+      where: { email_role: { email: p.email, role: Role.PASSENGER } },
       update: { password_hash: hash },
       create: {
         email: p.email,
@@ -48,13 +49,14 @@ async function main() {
         password_hash: hash,
         role: Role.PASSENGER,
         wallet_balance: 100000,
+        is_verified: true,
       },
     });
     console.log(`Passenger: ${p.name}`);
   }
 
   // Generate example completed ride for Nusrat
-  const nusrat = await prisma.user.findUnique({ where: { email: 'nusrat@oitesla.com' } });
+  const nusrat = await prisma.user.findUnique({ where: { email_role: { email: 'nusrat@oitesla.com', role: Role.PASSENGER } } });
   if (nusrat && bullet) {
     const existingRide = await prisma.rideRequest.findFirst({
       where: { passenger_id: nusrat.id, status: RideStatus.COMPLETED }

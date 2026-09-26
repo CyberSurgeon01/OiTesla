@@ -15,10 +15,6 @@ export default function Home() {
         </a>
       </nav>
 
-      {/* Background Ambient Glows */}
-      <div className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4F6BFF] opacity-5 blur-[150px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite] sm:h-[700px] sm:w-[700px]" />
-      {/* Subtle Rickshaw Amber Glow */}
-      <div className="absolute top-[60%] left-[60%] h-[300px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#F59E0B] opacity-[0.02] blur-[150px] pointer-events-none sm:h-[400px] sm:w-[400px]" />
 
       {/* Main Content Container */}
       <div className="z-10 flex w-full max-w-lg flex-col items-center justify-center space-y-12 text-center mt-4">

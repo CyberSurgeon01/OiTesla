@@ -8,8 +8,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey123';
 
 // Configure nodemailer for testing or real SMTP
 const transporter = nodemailer.createTransport({
+  service: process.env.SMTP_HOST && process.env.SMTP_HOST.includes('gmail') ? 'gmail' : undefined,
   host: process.env.SMTP_HOST || 'smtp.ethereal.email',
   port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: parseInt(process.env.SMTP_PORT || '587') === 465,
   auth: {
     user: process.env.SMTP_USER || 'test@ethereal.email',
     pass: process.env.SMTP_PASS || 'pass'
@@ -53,7 +55,7 @@ export const signup = async (req: Request, res: Response) => {
     // Send the email (In development, this will just log if SMTP isn't valid, or use a console log)
     try {
       if (process.env.SMTP_HOST) {
-await transporter.sendMail({
+        transporter.sendMail({
           from: '"OiTesla" <noreply@oitesla.com>',
           to: email,
           subject: 'Verify your OiTesla Account',
@@ -70,13 +72,16 @@ await transporter.sendMail({
               <p style="color: #6b7280; font-size: 14px; text-align: center; margin-bottom: 0;">If you didn't request this, you can safely ignore this email.</p>
             </div>
           `
-        });
+        }).catch(err => console.error('Background email failed:', err));
       } else {
-        console.log(`\n\n[MOCK EMAIL] To: ${email} | Code: ${verify_code}\n\n`);
+        console.log(`
+
+[MOCK EMAIL] To: ${email} | Code: ${verify_code}
+
+`);
       }
     } catch (e) {
-      console.log('Failed to send email:', e);
-      console.log(`[MOCK EMAIL FALLBACK] Code for ${email}: ${verify_code}`);
+      console.error('Email trigger failed:', e);
     }
 
     res.status(201).json({ message: 'Verification code sent to email', requiresVerification: true, email, role });

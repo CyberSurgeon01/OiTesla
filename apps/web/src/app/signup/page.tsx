@@ -70,11 +70,8 @@ export default function Signup() {
         throw new Error(data.error || 'Verification failed');
       }
       
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      
-      toast({ title: "Success", description: "Email verified successfully!" });
-      router.push(data.user.role === 'DRIVER' ? '/driver/dashboard' : '/passenger/dashboard');
+      toast({ title: "Success", description: "Account verified! Please log in." });
+      router.push('/login');
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {

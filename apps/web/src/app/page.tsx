@@ -80,42 +80,7 @@ export default function Home() {
           </svg>
         </div>
 
-        {/* Enhanced Glassmorphism Demo Credentials Card */}
-        <div className="w-full rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 sm:p-8 backdrop-blur-2xl shadow-2xl text-left transition-all duration-500 hover:bg-white/[0.04] hover:border-white/20 mt-8">
-          <div className="mb-6 flex flex-col space-y-2">
-            <div className="flex items-center space-x-3">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_10px_rgba(245,158,11,0.8)] animate-pulse"></div>
-              <h3 className="text-lg font-bold tracking-wide text-white uppercase">Demo Credentials</h3>
-            </div>
-            <p className="text-sm text-gray-400">Use these to test the application environment.</p>
-          </div>
-          
-          <div className="space-y-6">
-            <div className="flex flex-col space-y-2.5">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Driver</span>
-              <code className="rounded-xl border border-white/5 bg-black/40 px-4 py-3 text-sm font-mono text-gray-200">
-                jashim@oitesla.com
-              </code>
-            </div>
-            <div className="flex flex-col space-y-2.5">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Passengers</span>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <code className="flex-1 rounded-xl border border-white/5 bg-black/40 px-4 py-3 text-sm font-mono text-gray-200 truncate">
-                  nusrat@oitesla.com
-                </code>
-                <code className="flex-1 rounded-xl border border-white/5 bg-black/40 px-4 py-3 text-sm font-mono text-gray-200 truncate">
-                  rafiq@oitesla.com
-                </code>
-              </div>
-            </div>
-            
-            <div className="mt-8 rounded-xl bg-[#4F6BFF]/10 border border-[#4F6BFF]/20 p-4">
-              <p className="text-sm text-center text-[#a5b6ff]">
-                Password for all accounts: <strong className="text-white font-mono ml-1">hashedpassword123</strong>
-              </p>
-            </div>
-          </div>
-        </div>
+
       </div>
     </div>
   );

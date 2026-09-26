@@ -53,11 +53,23 @@ export const signup = async (req: Request, res: Response) => {
     // Send the email (In development, this will just log if SMTP isn't valid, or use a console log)
     try {
       if (process.env.SMTP_HOST) {
-        await transporter.sendMail({
+await transporter.sendMail({
           from: '"OiTesla" <noreply@oitesla.com>',
           to: email,
           subject: 'Verify your OiTesla Account',
-          text: `Your verification code is: ${verify_code}`
+          text: `Your verification code is: ${verify_code}`,
+          html: `
+            <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; border: 1px solid #e5e7eb; border-radius: 16px; background-color: #ffffff;">
+              <h2 style="color: #0A0D0B; margin-top: 0; font-size: 24px;">Welcome to OiTesla</h2>
+              <p style="color: #4b5563; font-size: 16px; line-height: 1.5;">Please use the verification code below to complete your registration. This code will expire in 10 minutes.</p>
+              
+              <div style="background-color: #0A0D0B; padding: 24px; border-radius: 12px; text-align: center; margin: 32px 0;">
+                <span style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: #10B981; margin-left: 8px;">${verify_code}</span>
+              </div>
+              
+              <p style="color: #6b7280; font-size: 14px; text-align: center; margin-bottom: 0;">If you didn't request this, you can safely ignore this email.</p>
+            </div>
+          `
         });
       } else {
         console.log(`\n\n[MOCK EMAIL] To: ${email} | Code: ${verify_code}\n\n`);

@@ -2,90 +2,104 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[#0A0A0F] text-white px-4 py-12">
-      {/* Glow Effect Behind Title */}
-      <div className="absolute top-[35%] left-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4F6BFF] opacity-35 blur-[120px] pointer-events-none sm:h-[450px] sm:w-[450px]" />
+    <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden bg-[#05050A] text-white px-6 py-20 selection:bg-[#4F6BFF]/30">
+      
+      {/* Background Ambient Glow */}
+      <div className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4F6BFF] opacity-25 blur-[120px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite] sm:h-[700px] sm:w-[700px] sm:opacity-20" />
 
-      <div className="z-10 flex w-full max-w-md flex-col items-center justify-center space-y-10 text-center sm:max-w-lg mt-8">
+      {/* Main Content Container */}
+      <div className="z-10 flex w-full max-w-lg flex-col items-center justify-center space-y-14 text-center">
         
-        {/* Text Section */}
-        <div className="flex flex-col items-center space-y-5">
-          <h1 className="text-7xl font-black tracking-tight text-white sm:text-8xl">
+        {/* Header Section */}
+        <div className="flex flex-col items-center space-y-6">
+          <h1 className="text-7xl font-black tracking-tighter text-white sm:text-8xl drop-shadow-2xl">
             OiTesla
           </h1>
-          <p className="text-base font-medium text-gray-300 sm:text-lg">
+          <p className="text-base font-medium text-gray-300 sm:text-xl max-w-[90%] mx-auto">
             Share a seat. Split the fare. Survive Dhaka traffic.
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex w-full flex-row justify-center gap-4">
+        {/* Buttons Section */}
+        <div className="flex w-full flex-col sm:flex-row justify-center items-center gap-4">
           <Link
             href="/login"
-            className="flex h-12 w-36 items-center justify-center rounded-full bg-[#4F6BFF] text-sm font-semibold text-white shadow-[0_0_20px_rgba(79,107,255,0.4)] transition-all hover:bg-[#4F6BFF]/80 hover:shadow-[0_0_30px_rgba(79,107,255,0.6)]"
+            className="group relative flex h-14 w-full sm:w-44 items-center justify-center rounded-full bg-[#4F6BFF] text-base font-semibold text-white shadow-[0_0_20px_rgba(79,107,255,0.4)] transition-all duration-300 hover:bg-[#4F6BFF]/90 hover:shadow-[0_0_40px_rgba(79,107,255,0.7)] hover:-translate-y-1"
           >
-            Sign In
+            <span>Sign In</span>
           </Link>
           <Link
             href="/signup"
-            className="flex h-12 w-40 items-center justify-center rounded-full border border-white/20 bg-transparent text-sm font-semibold text-white transition-all hover:bg-white/10"
+            className="flex h-14 w-full sm:w-48 items-center justify-center rounded-full border border-white/20 bg-white/[0.02] backdrop-blur-md text-base font-semibold text-white transition-all duration-300 hover:bg-white/10 hover:border-white/40 hover:-translate-y-1"
           >
             Create Account
           </Link>
         </div>
 
-        {/* SVG Route Graphic */}
-        <div className="w-full max-w-[280px] mt-4 opacity-90 sm:max-w-[350px]">
+        {/* Abstract Route Line SVG */}
+        <div className="w-full max-w-[280px] opacity-100 sm:max-w-[380px] relative mt-4">
           <svg
             viewBox="0 0 300 80"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="w-full drop-shadow-[0_0_15px_rgba(79,107,255,0.5)]"
+            className="w-full drop-shadow-[0_0_15px_rgba(79,107,255,0.6)]"
           >
-            {/* Wavy Line */}
+            {/* Smooth Wavy Line */}
             <path
-              d="M 20 50 C 120 70, 180 10, 280 30"
+              d="M 20 60 C 100 80, 200 20, 280 20"
               stroke="#4F6BFF"
-              strokeWidth="2.5"
+              strokeWidth="3"
               strokeLinecap="round"
               fill="none"
             />
-            {/* Glowing Dot 1 */}
-            <circle cx="20" cy="50" r="5" fill="white" stroke="#4F6BFF" strokeWidth="2.5" />
-            <circle cx="20" cy="50" r="9" fill="none" stroke="#4F6BFF" strokeWidth="1" className="opacity-60" />
+            {/* Glowing Dot 1 (Start) */}
+            <g className="animate-[pulse_3s_ease-in-out_infinite]">
+              <circle cx="20" cy="60" r="5" fill="white" stroke="#4F6BFF" strokeWidth="2.5" />
+              <circle cx="20" cy="60" r="12" fill="none" stroke="#4F6BFF" strokeWidth="1.5" className="opacity-60" />
+            </g>
             
-            {/* Glowing Dot 2 */}
-            <circle cx="280" cy="30" r="5" fill="white" stroke="#4F6BFF" strokeWidth="2.5" />
-            <circle cx="280" cy="30" r="9" fill="none" stroke="#4F6BFF" strokeWidth="1" className="opacity-60" />
+            {/* Glowing Dot 2 (End) */}
+            <g className="animate-[pulse_3s_ease-in-out_infinite_1.5s]">
+              <circle cx="280" cy="20" r="5" fill="white" stroke="#4F6BFF" strokeWidth="2.5" />
+              <circle cx="280" cy="20" r="12" fill="none" stroke="#4F6BFF" strokeWidth="1.5" className="opacity-60" />
+            </g>
           </svg>
         </div>
 
-        {/* Glassmorphism Demo Credentials Card */}
-        <div className="mt-12 w-full max-w-sm rounded-3xl border border-white/10 bg-white/[0.04] p-8 backdrop-blur-xl shadow-2xl text-left transition-all hover:bg-white/[0.06]">
-          <div className="mb-5 flex flex-col space-y-1.5">
-            <h3 className="text-xl font-semibold tracking-tight text-white">Demo Credentials</h3>
-            <p className="text-sm text-gray-400">Use these to test the application</p>
+        {/* Enhanced Glassmorphism Demo Credentials Card */}
+        <div className="w-full rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 sm:p-8 backdrop-blur-2xl shadow-2xl text-left transition-all duration-500 hover:bg-white/[0.04] hover:border-white/20">
+          <div className="mb-6 flex flex-col space-y-2">
+            <div className="flex items-center space-x-3">
+              <div className="h-2 w-2 rounded-full bg-[#4F6BFF] shadow-[0_0_10px_rgba(79,107,255,1)] animate-pulse"></div>
+              <h3 className="text-lg font-bold tracking-wide text-white uppercase">Demo Credentials</h3>
+            </div>
+            <p className="text-sm text-gray-400">Use these to test the application environment.</p>
           </div>
-          <div className="space-y-4">
-            <div className="flex flex-col space-y-1.5">
-              <span className="text-sm font-medium text-gray-300">Driver</span>
-              <code className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-200">
+          
+          <div className="space-y-6">
+            <div className="flex flex-col space-y-2.5">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Driver</span>
+              <code className="rounded-xl border border-white/5 bg-black/40 px-4 py-3 text-sm font-mono text-gray-200">
                 jashim@oitesla.com
               </code>
             </div>
-            <div className="flex flex-col space-y-1.5">
-              <span className="text-sm font-medium text-gray-300">Passengers</span>
-              <code className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-200">
-                nusrat@oitesla.com
-              </code>
-              <code className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-200">
-                rafiq@oitesla.com
-              </code>
+            <div className="flex flex-col space-y-2.5">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Passengers</span>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <code className="flex-1 rounded-xl border border-white/5 bg-black/40 px-4 py-3 text-sm font-mono text-gray-200 truncate">
+                  nusrat@oitesla.com
+                </code>
+                <code className="flex-1 rounded-xl border border-white/5 bg-black/40 px-4 py-3 text-sm font-mono text-gray-200 truncate">
+                  rafiq@oitesla.com
+                </code>
+              </div>
             </div>
-            <p className="mt-6 border-t border-white/10 pt-5 text-sm text-gray-400">
-              Password for all accounts:{' '}
-              <strong className="text-white">hashedpassword123</strong>
-            </p>
+            
+            <div className="mt-8 rounded-xl bg-[#4F6BFF]/10 border border-[#4F6BFF]/20 p-4">
+              <p className="text-sm text-center text-[#a5b6ff]">
+                Password for all accounts: <strong className="text-white font-mono ml-1">hashedpassword123</strong>
+              </p>
+            </div>
           </div>
         </div>
       </div>

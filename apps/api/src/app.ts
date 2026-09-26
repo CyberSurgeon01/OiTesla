@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { signup, login, me } from './auth/auth.controller';
+import { signup, login, me, verifyEmail } from './auth/auth.controller';
 import { requireAuth, requireRole } from './auth/auth.middleware';
 import { requestRide, updateRideStatus, getMyActiveRide, getMyHistory } from './pooling/pooling.controller';
 import { updateStatus, getActivePools, transitionPool, getHistory } from './driver/driver.controller';
@@ -12,6 +12,7 @@ app.use(express.json());
 
 // Auth
 app.post('/api/auth/signup', signup);
+app.post('/api/auth/verify', verifyEmail);
 app.post('/api/auth/login', login);
 app.get('/api/auth/me', requireAuth, me);
 

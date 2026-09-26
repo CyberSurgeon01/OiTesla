@@ -128,6 +128,11 @@ Due to recent shifts in cloud provider policies (Heroku, Render, Railway restric
 - `PATCH /api/driver/pools/:pool_id/status` - (Driver) Batch advances all ride requests within a pool to the next state (`ACCEPTED` -> `DRIVER_ARRIVED` -> `STARTED` -> `COMPLETED`).
 
 ## Key Decisions & Trade-Offs
+### Passenger/Driver State Sync (Short-Interval Polling)
+To ensure the passenger and driver views reflect the exact same ride state without lag or drift, the MVP utilizes short-interval polling (2–3s) against a single source of truth (the PostgreSQL database). 
+- **Limitation**: Introduces a few seconds of staleness and increased server load compared to a persistent connection.
+- **Why**: Avoids the complexity of introducing WebSockets, pub/sub queues, or separate state machines for an MVP. Polling is sufficient for early scale and adheres to the "don't add complexity without reason" principle.
+
 ### Tech Stack Choices & Alternatives
 - **Database (PostgreSQL)**: Picked for robust ACID compliance and row-level locking (`FOR UPDATE SKIP LOCKED`), essential for concurrency. *Alternative*: MongoDB (NoSQL), but lacks native strict row-level locking needed for double-booking prevention. Switch to a distributed SQL (e.g., CockroachDB) at viral scale.
 - **ORM (Prisma)**: Picked for rapid MVP prototyping and strict type-safety. *Alternative*: Drizzle or raw pg. Switch if Prisma's transaction overhead becomes a bottleneck.
@@ -144,7 +149,7 @@ Curious how OiTesla transitions from a fixed-zone MVP to supporting 1M passenger
 
 ## Known Limitations & Next Improvements
 - **GIS Routing**: Replacing the static zone matrix with Google Maps/Mapbox for live ETA and dynamic overlapping route calculations.
-- **WebSocket / SSE Updates**: Currently, the dashboard relies on 5-second HTTP polling. WebSockets would provide instant state transitions.
+- **WebSocket / SSE Updates**: Currently, the dashboard relies on 2.5-second HTTP polling. WebSockets would provide instant state transitions.
 - **Payment Gateway**: Integrating a real gateway like SSLCommerz instead of the simulated TeslaPay wallet.
 
 ## AI Usage

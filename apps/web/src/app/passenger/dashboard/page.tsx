@@ -53,20 +53,20 @@ function SearchableRouteSelect({ value, onChange, options, placeholder }: { valu
   return (
     <div className="relative w-full" ref={dropdownRef}>
       <div 
-        className="flex items-center w-full bg-white/[0.03] border border-white/10 p-3.5 rounded-xl cursor-pointer hover:bg-white/[0.06] transition-colors"
+        className="flex items-center w-full bg-[#0D110E] border border-[#1E2621] p-3.5 rounded-xl cursor-pointer hover:bg-[#1A211D] transition-colors"
         onClick={() => { setOpen(!open); setQuery(""); }}
       >
-        <span className={`flex-1 text-sm font-semibold ${value ? 'text-white' : 'text-gray-500'}`}>{value || placeholder}</span>
-        <ChevronDown className="w-4 h-4 text-gray-500" />
+        <span className={`flex-1 text-sm font-semibold ${value ? 'text-[#F3F4F6]' : 'text-[#6B7280]'}`}>{value || placeholder}</span>
+        <ChevronDown className="w-4 h-4 text-[#6B7280]" />
       </div>
       
       {open && (
-        <div className="absolute top-[110%] left-0 w-full bg-[#0F0F1A] border border-white/10 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-50 overflow-hidden backdrop-blur-2xl">
-          <div className="p-3 border-b border-white/5 flex items-center bg-black/40">
-            <Search className="w-4 h-4 text-gray-500 mr-2" />
+        <div className="absolute top-[110%] left-0 w-full bg-[#0F0F1A] border border-[#1E2621] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-50 overflow-hidden backdrop-blur-2xl">
+          <div className="p-3 border-b border-[#1E2621] flex items-center bg-[#0A0D0B]">
+            <Search className="w-4 h-4 text-[#6B7280] mr-2" />
             <input 
               type="text" 
-              className="bg-transparent border-none outline-none text-sm text-white w-full placeholder-gray-600"
+              className="bg-transparent border-none outline-none text-sm text-[#F3F4F6] w-full placeholder-gray-600"
               placeholder="Search zone..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -77,14 +77,14 @@ function SearchableRouteSelect({ value, onChange, options, placeholder }: { valu
             {filtered.length > 0 ? filtered.map(opt => (
               <div 
                 key={opt}
-                className="px-4 py-3 text-sm hover:bg-[#4F6BFF]/20 hover:text-white rounded-lg cursor-pointer text-gray-300 transition-colors flex items-center justify-between"
+                className="px-4 py-3 text-sm hover:bg-[#131815] border border-[#1E2621] hover:text-[#F3F4F6] rounded-lg cursor-pointer text-[#D1D5DB] transition-colors flex items-center justify-between"
                 onClick={() => { onChange(opt); setOpen(false); }}
               >
                 {opt}
-                {value === opt && <Check className="w-4 h-4 text-[#4F6BFF]" />}
+                {value === opt && <Check className="w-4 h-4 text-[#10B981]" />}
               </div>
             )) : (
-              <div className="px-4 py-3 text-sm text-gray-500 text-center">No zones found</div>
+              <div className="px-4 py-3 text-sm text-[#6B7280] text-center">No zones found</div>
             )}
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function PassengerDashboard() {
 
     const interval = setInterval(() => {
       fetchActiveRide(token);
-    }, 5000);
+    }, 2500);
     return () => clearInterval(interval);
   }, [router]);
 
@@ -216,9 +216,9 @@ export default function PassengerDashboard() {
 
   if (!user || loading) {
     return (
-      <div className="min-h-screen bg-[#05050A] flex flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 text-[#4F6BFF] animate-spin mb-4" />
-        <div className="text-gray-400 font-medium">Loading your dashboard...</div>
+      <div className="min-h-screen bg-[#0A0D0B] flex flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 text-[#10B981] animate-spin mb-4" />
+        <div className="text-[#88928B] font-medium">Loading your dashboard...</div>
       </div>
     );
   }
@@ -233,18 +233,18 @@ export default function PassengerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#05050A] text-white font-sans selection:bg-[#4F6BFF]/30 pb-32 sm:pb-12">
+    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12">
       
       {/* Top Header */}
-      <header className="sticky top-0 z-40 w-full bg-[#05050A]/90 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-40 w-full bg-[#0A0D0B]/90 backdrop-blur-xl border-b border-[#1E2621]">
         <div className="max-w-screen-xl mx-auto flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#4F6BFF] shadow-[0_0_10px_rgba(79,107,255,0.8)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#10B981] " />
             <span className="font-bold text-lg tracking-tight">OiTesla</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-gray-400 hidden sm:block">{user.name}</span>
-            <button onClick={logout} className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white">
+            <span className="text-sm font-medium text-[#88928B] hidden sm:block">{user.name}</span>
+            <button onClick={logout} className="p-2 rounded-full hover:bg-[#131815] transition-colors text-[#88928B] hover:text-[#F3F4F6]">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -255,17 +255,17 @@ export default function PassengerDashboard() {
         
         {!isRideActive ? (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-bold tracking-tight mb-6">Where to?</h2>
+            <h1 className="text-5xl sm:text-6xl font-semibold tracking-tight text-[#F3F4F6] mb-8 leading-tight">Where to?</h1>
             
             {/* Request Card */}
-            <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-6 shadow-2xl backdrop-blur-sm">
+            <div className="bg-[#131815] border border-[#1E2621] rounded-3xl p-6 shadow-2xl backdrop-blur-sm">
               
               {/* Route Picker */}
               <div className="flex gap-4">
                 <div className="flex flex-col items-center mt-5 mb-5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
-                  <div className="w-0.5 flex-1 bg-gradient-to-b from-white/20 to-[#4F6BFF]/50 my-1 rounded-full" />
-                  <div className="w-2.5 h-2.5 rounded-sm bg-[#4F6BFF] shadow-[0_0_8px_rgba(79,107,255,0.8)]" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-white " />
+                  <div className="w-0.5 flex-1 bg-[#1E2621] my-1 rounded-full" />
+                  <div className="w-2.5 h-2.5 rounded-sm bg-[#10B981] " />
                 </div>
                 <div className="flex-1 space-y-3 relative z-20">
                   <SearchableRouteSelect value={pickup} onChange={setPickup} options={ZONES} placeholder="Pickup Location" />
@@ -274,18 +274,18 @@ export default function PassengerDashboard() {
               </div>
 
               {/* Options Row */}
-              <div className="mt-8 flex items-center justify-between border-t border-white/5 pt-6 relative z-10">
+              <div className="mt-8 flex items-center justify-between border-t border-[#1E2621] pt-6 relative z-10">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#4F6BFF]/10 text-[#4F6BFF]">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#131815] border border-[#1E2621] text-[#10B981]">
                     <User className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Seats</div>
-                    <div className="flex items-center gap-3 bg-white/5 rounded-full px-3 py-1 border border-white/5">
+                    <div className="text-xs text-[#88928B] uppercase tracking-wider font-semibold mb-1">Seats</div>
+                    <div className="flex items-center gap-3 bg-[#0A0D0B] border border-[#1E2621] rounded-full px-3 py-1 border border-[#1E2621]">
                       <button 
                         onClick={() => setSeats(Math.max(1, seats - 1))}
                         disabled={seats <= 1}
-                        className="text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-gray-400 transition-colors"
+                        className="text-[#88928B] hover:text-[#F3F4F6] disabled:opacity-30 disabled:hover:text-[#88928B] transition-colors"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
@@ -293,7 +293,7 @@ export default function PassengerDashboard() {
                       <button 
                         onClick={() => setSeats(Math.min(4, seats + 1))}
                         disabled={seats >= 4}
-                        className="text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:text-gray-400 transition-colors"
+                        className="text-[#88928B] hover:text-[#F3F4F6] disabled:opacity-30 disabled:hover:text-[#88928B] transition-colors"
                       >
                         <Plus className="w-4 h-4" />
                       </button>
@@ -302,22 +302,22 @@ export default function PassengerDashboard() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/5 text-gray-300">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#0A0D0B] border border-[#1E2621] text-[#D1D5DB]">
                     <Wallet className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs text-gray-400 uppercase tracking-wider font-semibold mb-1">Payment</div>
-                    <div className="text-sm font-semibold text-white">Cash</div>
+                    <div className="text-xs text-[#88928B] uppercase tracking-wider font-semibold mb-1">Payment</div>
+                    <div className="text-sm font-semibold text-[#F3F4F6]">Cash</div>
                   </div>
                 </div>
               </div>
 
               {/* Fare Preview Box */}
-              <div className="mt-6 rounded-2xl bg-black/40 border border-white/5 p-5 min-h-[120px] flex flex-col justify-center relative z-0 transition-all">
+              <div className="mt-6 rounded-2xl bg-[#0A0D0B] border border-[#1E2621] p-5 min-h-[120px] flex flex-col justify-center relative z-0 transition-all">
                 {isCalculating ? (
                   <div className="flex flex-col items-center justify-center animate-pulse space-y-3">
                     <div className="h-6 w-24 bg-white/10 rounded-md" />
-                    <div className="h-4 w-40 bg-white/5 rounded-md" />
+                    <div className="h-4 w-40 bg-[#0A0D0B] border border-[#1E2621] rounded-md" />
                   </div>
                 ) : pickup === destination ? (
                   <div className="flex items-center justify-center text-red-400 gap-2">
@@ -327,13 +327,13 @@ export default function PassengerDashboard() {
                 ) : farePreview ? (
                   <div className="space-y-3">
                     <div className="flex justify-between items-end">
-                      <span className="text-gray-400 text-sm font-medium">Estimated Fare</span>
-                      <span className="text-3xl font-bold tracking-tight text-white">৳{farePreview.total.toFixed(2)}</span>
+                      <span className="text-[#88928B] text-sm font-medium">Estimated Fare</span>
+                      <span className="text-3xl font-bold tracking-tight text-[#F3F4F6]">৳{farePreview.total.toFixed(2)}</span>
                     </div>
                     {farePreview.poolDiscount > 0 && (
-                      <div className="rounded-lg bg-[#4F6BFF]/10 border border-[#4F6BFF]/20 p-2.5 flex items-start gap-2">
-                        <Car className="w-4 h-4 text-[#4F6BFF] mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-[#a5b6ff] leading-relaxed">
+                      <div className="rounded-lg bg-[#131815] border border-[#1E2621] border border-[#4F6BFF]/20 p-2.5 flex items-start gap-2">
+                        <Car className="w-4 h-4 text-[#10B981] mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-[#10B981] leading-relaxed">
                           Includes ৳{farePreview.poolDiscount} discount. Pooled with up to {4 - seats} riders going your way.
                         </p>
                       </div>
@@ -347,21 +347,21 @@ export default function PassengerDashboard() {
             <div className="pt-4 pb-12 sm:pb-0 relative z-0">
               <div className="flex items-center justify-between mb-4 px-2">
                 <h3 className="font-semibold text-lg">Recent Rides</h3>
-                <Link href="/passenger/history" className="text-sm font-medium text-[#4F6BFF] hover:text-white transition-colors flex items-center gap-1">
+                <Link href="/passenger/history" className="text-sm font-medium text-[#10B981] hover:text-[#F3F4F6] transition-colors flex items-center gap-1">
                   History <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 flex items-center justify-between hover:bg-white/[0.04] transition-colors cursor-pointer">
+              <div className="bg-[#131815] border border-[#1E2621] rounded-2xl p-5 flex items-center justify-between hover:bg-[#1A211D] transition-colors cursor-pointer">
                  <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                     <Clock className="w-5 h-5 text-gray-400" />
+                   <div className="w-10 h-10 rounded-full bg-[#0A0D0B] border border-[#1E2621] flex items-center justify-center">
+                     <Clock className="w-5 h-5 text-[#88928B]" />
                    </div>
                    <div>
-                     <div className="font-medium text-sm text-white">To Gulshan</div>
-                     <div className="text-xs text-gray-500 mt-0.5">Completed • Oct 12</div>
+                     <div className="font-medium text-sm text-[#F3F4F6]">To Gulshan</div>
+                     <div className="text-xs text-[#6B7280] mt-0.5">Completed • Oct 12</div>
                    </div>
                  </div>
-                 <div className="font-semibold text-sm text-white">৳45.00</div>
+                 <div className="font-semibold text-sm text-[#F3F4F6]">৳45.00</div>
               </div>
             </div>
 
@@ -371,7 +371,7 @@ export default function PassengerDashboard() {
                 <button
                   onClick={requestRide}
                   disabled={requesting || pickup === destination || isCalculating}
-                  className="w-full h-14 rounded-full bg-[#4F6BFF] text-white font-bold text-lg shadow-[0_0_20px_rgba(79,107,255,0.4)] transition-all duration-300 hover:bg-[#4F6BFF]/90 hover:shadow-[0_0_30px_rgba(79,107,255,0.6)] disabled:opacity-50 disabled:shadow-none hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-2"
+                  className="w-full h-14 rounded-xl bg-[#F0FDF4] text-[#022C22] font-semibold text-lg transition-all duration-300 hover:bg-[#DCFCE7] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {requesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
                   Confirm Request
@@ -382,33 +382,33 @@ export default function PassengerDashboard() {
         ) : (
           /* Active Ride Tracker View */
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-bold tracking-tight mb-2">Your Ride</h2>
+            <h1 className="text-5xl sm:text-6xl font-semibold tracking-tight text-[#F3F4F6] mb-8 leading-tight">Your Ride</h1>
             
-            <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
+            <div className="bg-[#131815] border border-[#1E2621] rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
               {/* Route Summary */}
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
+              <div className="flex items-center justify-between mb-8 pb-6 border-b border-[#1E2621]">
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center gap-1">
                     <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                    <div className="w-0.5 h-6 bg-white/20 rounded-full" />
-                    <div className="w-2.5 h-2.5 rounded-sm bg-[#4F6BFF]" />
+                    <div className="w-0.5 h-6 bg-[#1E2621] rounded-full" />
+                    <div className="w-2.5 h-2.5 rounded-sm bg-[#10B981]" />
                   </div>
                   <div className="flex flex-col justify-between h-14">
-                    <div className="font-semibold text-sm text-white">{activeRide.pickup_zone}</div>
-                    <div className="font-semibold text-sm text-white">{activeRide.destination_zone}</div>
+                    <div className="font-semibold text-sm text-[#F3F4F6]">{activeRide.pickup_zone}</div>
+                    <div className="font-semibold text-sm text-[#F3F4F6]">{activeRide.destination_zone}</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-1 font-semibold">Fare</div>
-                  <div className="text-xl font-bold text-white">৳{(activeRide.fare_amount / 100).toFixed(2)}</div>
+                  <div className="text-xs text-[#6B7280] uppercase tracking-wider mb-1 font-semibold">Fare</div>
+                  <div className="text-xl font-bold text-[#F3F4F6]">৳{(activeRide.fare_amount / 100).toFixed(2)}</div>
                 </div>
               </div>
 
               {/* Advanced Stepper */}
               <div className="relative mb-14 px-2">
-                <div className="absolute left-2 right-2 top-2.5 h-0.5 bg-white/10 rounded-full" />
+                <div className="absolute left-2 right-2 top-2.5 h-0.5 bg-[#1E2621] rounded-full" />
                 <div 
-                  className="absolute left-2 top-2.5 h-0.5 bg-[#4F6BFF] rounded-full transition-all duration-700 ease-in-out" 
+                  className="absolute left-2 top-2.5 h-0.5 bg-[#10B981] rounded-full transition-all duration-700 ease-in-out" 
                   style={{ width: `${(currentStepIndex / (STEPS.length - 1)) * 100}%` }}
                 />
                 
@@ -420,13 +420,13 @@ export default function PassengerDashboard() {
                     return (
                       <div key={step} className="flex flex-col items-center">
                         <div className={`w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${
-                          isPast ? 'bg-[#4F6BFF] shadow-[0_0_10px_rgba(79,107,255,0.8)]' : 
-                          isActive ? 'bg-[#4F6BFF] ring-4 ring-[#4F6BFF]/30 animate-pulse' : 'bg-[#1A1A24] border-2 border-white/10'
+                          isPast ? 'bg-[#10B981] ' : 
+                          isActive ? 'bg-[#10B981] ring-4 ring-[#10B981]/30 animate-pulse' : 'bg-[#131815] border border-[#1E2621]'
                         }`}>
                           {isPast && <div className="w-2 h-2 rounded-full bg-white" />}
                         </div>
                         <span className={`absolute mt-8 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest w-20 text-center -ml-10 transition-colors duration-300 ${
-                          isActive ? 'text-white' : isPast ? 'text-[#4F6BFF]' : 'text-gray-600'
+                          isActive ? 'text-[#F3F4F6]' : isPast ? 'text-[#10B981]' : 'text-[#4B5563]'
                         }`}>
                           {step.replace('_', ' ')}
                         </span>
@@ -437,15 +437,15 @@ export default function PassengerDashboard() {
               </div>
 
               {/* Driver / Match Info Area */}
-              <div className="mt-8 rounded-2xl bg-black/40 border border-white/5 p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#4F6BFF]/20 flex items-center justify-center text-[#4F6BFF]">
+              <div className="mt-8 rounded-2xl bg-[#0A0D0B] border border-[#1E2621] p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-[#131815] border border-[#1E2621] flex items-center justify-center text-[#10B981]">
                   {currentStepIndex >= 1 ? <Car className="w-6 h-6" /> : <Search className="w-6 h-6 animate-pulse" />}
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-sm text-white">
+                  <div className="font-semibold text-sm text-[#F3F4F6]">
                     {currentStepIndex >= 1 ? 'Driver assigned' : 'Finding your driver...'}
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">
+                  <div className="text-xs text-[#88928B] mt-1">
                     {currentStepIndex >= 1 ? 'Tesla Model S • Dark Blue' : 'Matching you with a pooled ride'}
                   </div>
                 </div>
@@ -453,7 +453,7 @@ export default function PassengerDashboard() {
               
               {/* Cancel Button */}
               {canCancel && (
-                <div className="mt-8 pt-6 border-t border-white/5">
+                <div className="mt-8 pt-6 border-t border-[#1E2621]">
                   <button
                     onClick={cancelRide}
                     disabled={cancelling}
@@ -462,7 +462,7 @@ export default function PassengerDashboard() {
                     {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
                     Cancel Ride
                   </button>
-                  <p className="text-center text-xs text-gray-500 mt-3 font-medium">
+                  <p className="text-center text-xs text-[#6B7280] mt-3 font-medium">
                     No fee if cancelled before driver arrives
                   </p>
                 </div>

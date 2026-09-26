@@ -60,9 +60,6 @@ export default function Login() {
       {/* Glassmorphism Auth Card */}
       <div className="z-10 w-full max-w-[420px] rounded-[2rem] border border-white/10 bg-white/[0.02] p-8 sm:p-10 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:bg-white/[0.03] hover:border-white/20">
         <div className="flex flex-col space-y-2 text-center mb-10">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#10B981]/10">
-            <div className="h-4 w-4 rounded-full bg-[#10B981] shadow-[0_0_15px_rgba(16,185,129,1)] animate-pulse" />
-          </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Welcome back</h1>
           <p className="text-sm text-gray-400">Enter your credentials to access your account</p>
         </div>

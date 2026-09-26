@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 
 export default function Home() {
   const [showContent, setShowContent] = useState(false);
@@ -14,21 +15,21 @@ export default function Home() {
 
   if (!showContent) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#05050A]">
+      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-[#0A0D0B]">
         <style>{`
-          @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-            100% { transform: translateY(0px); }
+          @keyframes subtleFloat {
+            0% { transform: translateY(0px); opacity: 0; }
+            20% { opacity: 1; transform: translateY(-5px); }
+            80% { opacity: 1; transform: translateY(-5px); }
+            100% { transform: translateY(-10px); opacity: 0; }
           }
-          .animate-float {
-            animation: float 2.5s ease-in-out infinite;
+          .animate-splash {
+            animation: subtleFloat 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
           }
         `}</style>
-        <div className="animate-float flex flex-col items-center gap-4">
-          <div className="w-4 h-4 rounded-full bg-[#F59E0B] shadow-[0_0_20px_rgba(245,158,11,0.8)] animate-pulse" />
-          <h1 className="text-6xl sm:text-8xl font-black tracking-tighter text-white">
-            OiTesla
+        <div className="animate-splash">
+          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-[#F3F4F6]">
+            OiTesla.
           </h1>
         </div>
       </div>
@@ -36,29 +37,31 @@ export default function Home() {
   }
 
   return (
-    <div className="animate-in fade-in zoom-in-95 duration-1000 relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden bg-[#05050A] text-white px-6 py-24 selection:bg-[#4F6BFF]/30">
+    <div className="animate-in fade-in duration-1000 relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden bg-[#0A0D0B] text-[#F3F4F6] px-6 py-24 selection:bg-[#10B981]/30">
       
-      {/* Simple Minimal Top Nav */}
+      {/* Minimal Top Nav */}
       <nav className="absolute top-0 left-0 w-full p-6 sm:px-12 flex justify-between items-center z-50">
-        <div className="text-xl font-black tracking-tighter text-white flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] shadow-[0_0_10px_rgba(245,158,11,0.8)] animate-pulse" />
+        <div className="text-xl font-bold tracking-tight text-[#F3F4F6]">
           OiTesla
         </div>
-        <a href="https://github.com/CyberSurgeon01/OiTesla" target="_blank" rel="noreferrer" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">
+        <a href="https://github.com/CyberSurgeon01/OiTesla" target="_blank" rel="noreferrer" className="text-sm font-medium text-[#88928B] hover:text-[#F3F4F6] transition-colors">
           GitHub
         </a>
       </nav>
 
       {/* Main Content Container */}
-      <div className="z-10 flex w-full max-w-lg flex-col items-center justify-center space-y-12 text-center mt-4">
+      <div className="z-10 flex w-full max-w-2xl flex-col items-center justify-center text-center mt-4">
         
+
+
         {/* Header Section */}
-        <div className="flex flex-col items-center space-y-6">
-          <h1 className="text-7xl font-black tracking-tighter text-white sm:text-8xl drop-shadow-2xl">
-            OiTesla
+        <div className="flex flex-col items-center space-y-6 mb-12">
+          <h1 className="text-6xl sm:text-8xl font-semibold tracking-tight text-[#F3F4F6] leading-[1.05]">
+            Share a seat.<br/>
+            <span className="text-[#88928B]">Split the fare.</span>
           </h1>
-          <p className="text-base font-medium text-gray-300 sm:text-xl max-w-[95%] mx-auto leading-relaxed">
-            Share a seat. Split the fare. Survive <span className="text-white font-semibold border-b-2 border-[#F59E0B] pb-0.5">Dhaka</span> traffic.
+          <p className="text-base text-[#88928B] sm:text-xl max-w-[85%] mx-auto leading-relaxed mt-4">
+            A premium pooling experience to help you survive the traffic.
           </p>
         </div>
 
@@ -66,47 +69,16 @@ export default function Home() {
         <div className="flex w-full flex-col sm:flex-row justify-center items-center gap-4">
           <Link
             href="/login"
-            className="group relative flex h-14 w-full sm:w-44 items-center justify-center rounded-full bg-[#4F6BFF] text-base font-semibold text-white shadow-[0_0_20px_rgba(79,107,255,0.4)] transition-all duration-300 hover:bg-[#4F6BFF]/90 hover:shadow-[0_0_30px_rgba(245,158,11,0.4)] hover:-translate-y-1 hover:ring-2 hover:ring-[#F59E0B]/50"
+            className="group relative flex h-14 w-full sm:w-44 items-center justify-center rounded-xl bg-[#F0FDF4] text-base font-semibold text-[#022C22] transition-all duration-300 hover:bg-[#DCFCE7]"
           >
-            <span>Sign In</span>
+            Sign In
           </Link>
           <Link
             href="/signup"
-            className="flex h-14 w-full sm:w-48 items-center justify-center rounded-full border border-white/20 bg-white/[0.02] backdrop-blur-md text-base font-semibold text-white transition-all duration-300 hover:bg-white/10 hover:border-white/40 hover:-translate-y-1"
+            className="group flex h-14 w-full sm:w-56 items-center justify-center rounded-xl border border-[#1E2621] bg-[#131815] text-base font-semibold text-[#F3F4F6] transition-all duration-300 hover:border-[#2C3831] hover:bg-[#1A211D]"
           >
-            Create Account
+            Create Account <ArrowRight className="w-4 h-4 ml-2 text-[#88928B] group-hover:text-[#F3F4F6] transition-colors" />
           </Link>
-        </div>
-
-        {/* Abstract Route Line SVG with Dhaka Rickshaw Yellow accents */}
-        <div className="w-full max-w-[280px] opacity-100 sm:max-w-[380px] relative mt-2">
-          <svg
-            viewBox="0 0 300 80"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-full drop-shadow-[0_0_15px_rgba(79,107,255,0.4)]"
-          >
-            {/* Smooth Wavy Line (Dashed map route) */}
-            <path
-              d="M 20 60 C 100 80, 200 20, 280 20"
-              stroke="#4F6BFF"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeDasharray="6 6"
-              fill="none"
-            />
-            {/* Glowing Dot 1 (Start) */}
-            <g className="animate-[pulse_3s_ease-in-out_infinite]">
-              <circle cx="20" cy="60" r="5" fill="#F59E0B" stroke="#F59E0B" strokeWidth="2.5" />
-              <circle cx="20" cy="60" r="12" fill="none" stroke="#F59E0B" strokeWidth="1.5" className="opacity-60" />
-            </g>
-            
-            {/* Glowing Dot 2 (End) */}
-            <g className="animate-[pulse_3s_ease-in-out_infinite_1.5s]">
-              <circle cx="280" cy="20" r="5" fill="#F59E0B" stroke="#F59E0B" strokeWidth="2.5" />
-              <circle cx="280" cy="20" r="12" fill="none" stroke="#F59E0B" strokeWidth="1.5" className="opacity-60" />
-            </g>
-          </svg>
         </div>
 
       </div>

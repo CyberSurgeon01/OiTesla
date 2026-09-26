@@ -2,7 +2,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, MapPin, Calendar, Clock } from 'lucide-react';
+import { TopBar } from '@/components/TopBar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Clock, ChevronLeft, MapPin } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function PassengerHistory() {
   const [history, setHistory] = useState<any[]>([]);
@@ -10,91 +15,118 @@ export default function PassengerHistory() {
   const router = useRouter();
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+
+    if (!token || !storedUser) {
+      router.push('/login');
+      return;
+    }
+
     const fetchHistory = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/passenger/rides/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
+          // Sort most recent first
+          data.sort((a: any, b: any) => new Date(b.requested_at).getTime() - new Date(a.requested_at).getTime());
           setHistory(data);
         }
-      } catch (error) {
-        console.error('Failed to fetch history', error);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
     };
+
     fetchHistory();
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-20">
-      <header className="sticky top-0 z-40 w-full bg-[#0A0D0B]/90 backdrop-blur-xl border-b border-[#1E2621]">
-        <div className="max-w-screen-xl mx-auto flex h-16 items-center px-6 gap-4">
-          <Link href="/passenger/dashboard" className="p-2 -ml-2 rounded-full hover:bg-[#131815] transition-colors text-[#88928B] hover:text-[#F3F4F6]">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <span className="font-bold text-lg tracking-tight">Trip History</span>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-background">
+      <TopBar userRole="PASSENGER" userName="History" />
+      
+      <main className="flex-1 p-4 md:p-6 lg:p-8 flex justify-center">
+        <div className="w-full max-w-2xl space-y-6">
+          <div className="flex items-center space-x-4">
+            <Button asChild variant="ghost" size="icon" className="-ml-2">
+              <Link href="/passenger/dashboard">
+                <ChevronLeft className="h-5 w-5" />
+              </Link>
+            </Button>
+            <h1 className="text-2xl font-semibold tracking-tight">Ride History</h1>
+          </div>
 
-      <main className="max-w-lg mx-auto p-6 space-y-6">
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-[#10B981]" />
-          </div>
-        ) : history.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#1E2621] p-12 text-center text-[#88928B] bg-[#0A0D0B]">
-            <Clock className="mx-auto h-8 w-8 opacity-50 mb-3" />
-            <p>No past trips found</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {history.map((ride: any) => (
-              <div key={ride.id} className="bg-[#131815] border border-[#1E2621] rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                <div className="p-5 border-b border-[#1E2621] flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[#88928B]" />
-                    <span className="text-sm font-medium text-[#88928B]">
-                      {new Date(ride.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  </div>
-                  <span className={`text-xs font-semibold uppercase tracking-widest ${ride.status === 'COMPLETED' ? 'text-[#10B981]' : 'text-red-500/80'}`}>
-                    {ride.status}
-                  </span>
-                </div>
-                <div className="p-5 flex flex-col gap-4">
-                  <div className="flex justify-between items-start">
-                    <div className="font-semibold text-2xl text-[#F3F4F6]">
-                      ৳{(ride.fare_amount / 100).toFixed(2)}
-                    </div>
-                    <div className="text-sm font-medium text-[#88928B] bg-[#0D110E] border border-[#1E2621] px-3 py-1 rounded-full">
-                      {ride.seats_requested} Seat{ride.seats_requested > 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-white" />
-                      <div className="w-[1px] h-4 bg-[#1E2621]" />
-                      <div className="w-2 h-2 rounded-sm bg-[#10B981]" />
-                    </div>
-                    <div className="flex flex-col justify-between h-10 text-sm text-[#88928B]">
-                      <span>{ride.pickup_zone}</span>
-                      <span>{ride.destination_zone}</span>
-                    </div>
-                  </div>
-                </div>
+          {loading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-12 flex flex-col items-center text-center text-muted-foreground mt-8">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Clock className="h-6 w-6 opacity-50" />
               </div>
-            ))}
-          </div>
-        )}
+              <h3 className="text-lg font-medium text-foreground mb-1">No past rides</h3>
+              <p>You haven't taken any trips yet.</p>
+              <Button asChild variant="outline" className="mt-6">
+                <Link href="/passenger/dashboard">Request a Ride</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {history.map(ride => {
+                const isCompleted = ride.status === 'COMPLETED';
+                const isCancelled = ride.status === 'CANCELLED';
+                
+                return (
+                  <Card key={ride.id} className="overflow-hidden hover:bg-muted/50 transition-colors">
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="space-y-1">
+                          <div className="font-semibold text-base sm:text-lg">
+                            {ride.pickup_zone} → {ride.destination_zone}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(ride.requested_at).toLocaleDateString('en-US', {
+                              month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit'
+                            })}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-lg">৳{(ride.fare_amount / 100).toFixed(2)}</div>
+                          <div className={cn(
+                            "text-xs font-medium uppercase tracking-wider mt-1",
+                            isCompleted ? "text-success" : isCancelled ? "text-destructive" : "text-muted-foreground"
+                          )}>
+                            {ride.status}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 pt-4 border-t">
+                        <div className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
+                          {ride.payment_method}
+                        </div>
+                        <div className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
+                          {ride.seats_requested} Seat{ride.seats_requested > 1 ? 's' : ''}
+                        </div>
+                        {ride.pool && (
+                          <div className="text-xs bg-muted px-2 py-1 rounded-md text-muted-foreground">
+                            Vehicle: {ride.pool.vehicle.name}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

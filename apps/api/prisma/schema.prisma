@@ -43,7 +43,7 @@ model User {
   id             Int           @id @default(autoincrement())
   role           Role
   name           String
-  email          String        @unique
+  email          String
   password_hash  String
   wallet_balance Int           @default(0) // Stored in poysha
   createdAt      DateTime      @default(now())
@@ -51,6 +51,8 @@ model User {
 
   vehicles       Vehicle[]     @relation("DriverVehicles")
   rideRequests   RideRequest[] @relation("PassengerRides")
+
+  @@unique([email, role])
 }
 
 model Vehicle {

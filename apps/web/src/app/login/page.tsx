@@ -8,6 +8,7 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('PASSENGER');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -20,7 +21,7 @@ export default function Login() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role }),
       });
       
       const data = await res.json();
@@ -65,6 +66,29 @@ export default function Login() {
         </div>
         
         <form onSubmit={handleLogin} className="space-y-5">
+          
+          <div className="space-y-3 pb-2">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Log in as</label>
+            <div className="flex w-full space-x-3">
+              <button
+                type="button"
+                onClick={() => setRole('PASSENGER')}
+                disabled={loading}
+                className={`flex-1 rounded-xl border py-3 text-sm font-semibold transition-all ${role === 'PASSENGER' ? 'border-[#10B981] bg-[#10B981]/20 text-white' : 'border-white/10 bg-black/40 text-gray-400 hover:bg-white/5'}`}
+              >
+                Passenger
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('DRIVER')}
+                disabled={loading}
+                className={`flex-1 rounded-xl border py-3 text-sm font-semibold transition-all ${role === 'DRIVER' ? 'border-[#34D399] bg-[#34D399]/20 text-white' : 'border-white/10 bg-black/40 text-gray-400 hover:bg-white/5'}`}
+              >
+                Driver
+              </button>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label htmlFor="email" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Email</label>
             <input 

@@ -17,9 +17,9 @@ export const signup = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email_role: { email, role } } });
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+      return res.status(400).json({ error: `You already have an account as a ${role.toLowerCase()} with this email` });
     }
 
     const password_hash = await bcrypt.hash(password, 10);
@@ -29,7 +29,7 @@ export const signup = async (req: Request, res: Response) => {
         name,
         password_hash,
         role,
-        wallet_balance: role === 'PASSENGER' ? 100000 : 50000, // starting balance in poysha
+        wallet_balance: role === 'PASSENGER' ? 100000 : 50000,
       },
     });
 
@@ -46,15 +46,15 @@ export const signup = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    if (!email || !password || !role) {
+      return res.status(400).json({ error: 'Email, password, and role are required' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email_role: { email, role } } });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid credentials or role' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);

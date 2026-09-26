@@ -28,9 +28,9 @@ export const signup = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email_role: { email, role } } });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: `You already have an account as a ${role.toLowerCase()} with this email` });
+      return res.status(400).json({ error: 'User with this email already exists' });
     }
 
     const password_hash = await bcrypt.hash(password, 10);
@@ -88,13 +88,13 @@ await transporter.sendMail({
 
 export const verifyEmail = async (req: Request, res: Response) => {
   try {
-    const { email, role, code } = req.body;
+    const { email, code } = req.body;
     
-    if (!email || !role || !code) {
+    if (!email || !code) {
       return res.status(400).json({ error: 'Missing parameters' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email_role: { email, role } } });
+    const user = await prisma.user.findUnique({ where: { email } });
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -134,15 +134,15 @@ export const verifyEmail = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
 
-    if (!email || !password || !role) {
-      return res.status(400).json({ error: 'Email, password, and role are required' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email_role: { email, role } } });
+    const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials or role' });
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     if (!user.is_verified) {

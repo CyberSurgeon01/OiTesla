@@ -118,9 +118,9 @@ export default function DriverDashboard() {
 
   if (!user || loading) {
     return (
-      <div className="min-h-screen bg-[#0A0D0B] flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-[#131815] flex flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 text-[#10B981] animate-spin mb-4" />
-        <div className="text-[#A1A1AA] font-medium">Loading your dashboard...</div>
+        <div className="text-[#D1D5DB] font-medium">Loading your dashboard...</div>
       </div>
     );
   }
@@ -171,18 +171,18 @@ export default function DriverDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12">
+    <div className="min-h-screen bg-[#131815] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12">
       
       {/* Top Header */}
-      <header className="sticky top-0 z-40 w-full bg-[#0A0D0B]/90 backdrop-blur-xl border-b border-[#2C3831]">
+      <header className="sticky top-0 z-40 w-full bg-[#131815]/90 backdrop-blur-xl border-b border-[#3E4C44]">
         <div className="max-w-screen-xl mx-auto flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full bg-[#F3F4F6]" />
             <span className="font-bold text-lg tracking-tight">OiTesla Driver</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-[#A1A1AA] hidden sm:block">{user.name}</span>
-            <button onClick={logout} className="p-2 rounded-full hover:bg-[#131815] transition-colors text-[#A1A1AA] hover:text-[#F3F4F6]">
+            <span className="text-sm font-medium text-[#D1D5DB] hidden sm:block">{user.name}</span>
+            <button onClick={logout} className="p-2 rounded-full hover:bg-[#1E2621] transition-colors text-[#D1D5DB] hover:text-[#F3F4F6]">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -192,10 +192,10 @@ export default function DriverDashboard() {
       <main className="max-w-lg mx-auto p-6 mt-4 space-y-8">
         
         {/* Tesla Capacity Persistent Indicator */}
-        <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-5 flex items-center justify-between">
+        <div className="bg-[#1E2621] border border-[#3E4C44] rounded-2xl p-5 flex items-center justify-between">
           <div className="flex flex-col">
             <span className="font-semibold text-lg text-[#F3F4F6]">Tesla Occupancy</span>
-            <span className="text-sm text-[#A1A1AA] mt-0.5">
+            <span className="text-sm text-[#D1D5DB] mt-0.5">
               {filledSeats} / {maxSeats} Seats Filled
             </span>
           </div>
@@ -205,7 +205,7 @@ export default function DriverDashboard() {
                 key={i} 
                 className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center border transition-colors",
-                  i < filledSeats ? "bg-[#10B981] border-[#10B981] text-[#0A0D0B]" : "bg-[#1E2621] border-[#2C3831] text-[#1E2621]"
+                  i < filledSeats ? "bg-[#10B981] border-[#10B981] text-[#0A0D0B]" : "bg-[#2C3831] border-[#3E4C44] text-[#1E2621]"
                 )} 
               >
                 <User className="w-4 h-4" />
@@ -215,10 +215,10 @@ export default function DriverDashboard() {
         </div>
 
         {/* Online Toggle */}
-        <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-5 flex items-center justify-between">
+        <div className="bg-[#1E2621] border border-[#3E4C44] rounded-2xl p-5 flex items-center justify-between">
           <div className="flex flex-col">
             <span className="font-semibold text-lg text-[#F3F4F6]">Accepting Rides</span>
-            <span className="text-sm text-[#A1A1AA] mt-0.5">
+            <span className="text-sm text-[#D1D5DB] mt-0.5">
               {isOnline ? "You're visible to passengers" : "Go online to receive requests"}
             </span>
           </div>
@@ -227,7 +227,7 @@ export default function DriverDashboard() {
             disabled={statusLoading}
             className={cn(
               "relative inline-flex h-8 w-14 items-center rounded-full transition-colors disabled:opacity-50",
-              isOnline ? "bg-[#131815] border border-[#2C3831]" : "bg-[#131815] border border-[#2C3831]"
+              isOnline ? "bg-[#1E2621] border border-[#3E4C44]" : "bg-[#1E2621] border border-[#3E4C44]"
             )}
           >
             <span
@@ -243,7 +243,7 @@ export default function DriverDashboard() {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold tracking-tight text-[#F3F4F6]">Incoming Requests</h2>
           {pendingPools.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#3F3F46] p-8 text-center text-[#A1A1AA] bg-[#131815]">
+            <div className="rounded-2xl border border-dashed border-[#3F3F46] p-8 text-center text-[#D1D5DB] bg-[#1E2621]">
               <Navigation className="mx-auto h-8 w-8 opacity-50 mb-3" />
               <p>No new requests</p>
             </div>
@@ -253,8 +253,8 @@ export default function DriverDashboard() {
               const seatsUsed = activeRides.reduce((acc: number, r: any) => acc + r.seats_requested, 0);
               
               return (
-                <div key={pool.id} className="bg-[#131815] border border-[#2C3831] rounded-2xl overflow-hidden">
-                  <div className="p-5 border-b border-[#2C3831] flex justify-between items-center">
+                <div key={pool.id} className="bg-[#1E2621] border border-[#3E4C44] rounded-2xl overflow-hidden">
+                  <div className="p-5 border-b border-[#3E4C44] flex justify-between items-center">
                     <span className="text-[#F3F4F6] font-semibold">New Pool Assignment</span>
                     <div className="text-xs font-semibold uppercase tracking-widest text-[#10B981]">
                       +{seatsUsed} seats
@@ -266,9 +266,9 @@ export default function DriverDashboard() {
                       <div key={ride.id} className="p-5 flex flex-col gap-4">
                         <div className="flex justify-between items-start">
                           <div className="flex items-center text-sm font-medium text-[#F3F4F6]">
-                            <User className="mr-2 h-4 w-4 text-[#A1A1AA]" />
+                            <User className="mr-2 h-4 w-4 text-[#D1D5DB]" />
                             {ride.passenger.name} 
-                            <span className="ml-2 text-[#A1A1AA]">({ride.seats_requested} seat)</span>
+                            <span className="ml-2 text-[#D1D5DB]">({ride.seats_requested} seat)</span>
                           </div>
                           <div className="font-semibold text-lg text-[#F3F4F6]">
                             ৳{(ride.fare_amount / 100).toFixed(2)}
@@ -278,10 +278,10 @@ export default function DriverDashboard() {
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col items-center gap-1">
                             <div className="w-2 h-2 rounded-full bg-white" />
-                            <div className="w-[1px] h-4 bg-[#1E2621]" />
+                            <div className="w-[1px] h-4 bg-[#2C3831]" />
                             <div className="w-2 h-2 rounded-sm bg-[#10B981]" />
                           </div>
-                          <div className="flex flex-col justify-between h-10 text-sm text-[#A1A1AA]">
+                          <div className="flex flex-col justify-between h-10 text-sm text-[#D1D5DB]">
                             <span>{ride.pickup_zone}</span>
                             <span>{ride.destination_zone}</span>
                           </div>
@@ -290,7 +290,7 @@ export default function DriverDashboard() {
                     ))}
                   </div>
 
-                  <div className="p-5 bg-[#1E2621]">
+                  <div className="p-5 bg-[#2C3831]">
                     <button 
                       onClick={() => transitionPool(pool.id, 'ACCEPTED')}
                       disabled={actionLoading === pool.id}
@@ -310,7 +310,7 @@ export default function DriverDashboard() {
         <div className="space-y-4">
           <h2 className="text-2xl font-bold tracking-tight text-[#F3F4F6]">Active Trip</h2>
           {inProgressPools.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#3F3F46] p-8 text-center text-[#A1A1AA] bg-[#131815]">
+            <div className="rounded-2xl border border-dashed border-[#3F3F46] p-8 text-center text-[#D1D5DB] bg-[#1E2621]">
               <MapPin className="mx-auto h-8 w-8 opacity-50 mb-3" />
               <p>No trip in progress</p>
             </div>
@@ -319,8 +319,8 @@ export default function DriverDashboard() {
               const activeRides = pool.rideRequests.filter(activeAndNotCancelled);
               
               return (
-                <div key={pool.id} className="bg-[#131815] border border-[#2C3831] rounded-2xl overflow-hidden">
-                  <div className="p-5 border-b border-[#2C3831] flex justify-between items-center">
+                <div key={pool.id} className="bg-[#1E2621] border border-[#3E4C44] rounded-2xl overflow-hidden">
+                  <div className="p-5 border-b border-[#3E4C44] flex justify-between items-center">
                     <div className="flex items-center space-x-2">
                       <div className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
                       <span className="font-semibold text-[#F3F4F6]">Live Trip</span>
@@ -335,14 +335,14 @@ export default function DriverDashboard() {
                             <span className="font-medium text-sm text-[#F3F4F6]">{ride.passenger.name}</span>
 
                           </div>
-                          <div className="font-medium bg-[#1E2621] border border-[#2C3831] px-2 py-1 rounded text-sm text-[#F3F4F6]">
+                          <div className="font-medium bg-[#2C3831] border border-[#3E4C44] px-2 py-1 rounded text-sm text-[#F3F4F6]">
                             ৳{(ride.fare_amount / 100).toFixed(2)}
                           </div>
                         </div>
 
                         {/* Advanced Stepper */}
                         <div className="relative mt-2 mb-12 px-2">
-                          <div className="absolute left-2 right-2 top-2.5 h-0.5 bg-[#1E2621] rounded-full" />
+                          <div className="absolute left-2 right-2 top-2.5 h-0.5 bg-[#2C3831] rounded-full" />
                           <div 
                             className="absolute left-2 top-2.5 h-0.5 bg-[#10B981] rounded-full transition-all duration-700 ease-in-out" 
                             style={{ width: `${(Math.max(0, STEPS.indexOf(ride.status)) / (STEPS.length - 1)) * 100}%` }}
@@ -358,7 +358,7 @@ export default function DriverDashboard() {
                                 <div key={step} className="flex flex-col items-center">
                                   <div className={`w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${
                                     isPast ? 'bg-[#10B981] ' : 
-                                    isActive ? 'bg-[#10B981] ring-4 ring-[#10B981]/30 animate-pulse' : 'bg-[#131815] border border-[#2C3831]'
+                                    isActive ? 'bg-[#10B981] ring-4 ring-[#10B981]/30 animate-pulse' : 'bg-[#1E2621] border border-[#3E4C44]'
                                   }`}>
                                     {isPast && <div className="w-2 h-2 rounded-full bg-white" />}
                                   </div>
@@ -376,10 +376,10 @@ export default function DriverDashboard() {
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col items-center gap-1">
                             <div className="w-2 h-2 rounded-full bg-white" />
-                            <div className="w-[1px] h-4 bg-[#1E2621]" />
+                            <div className="w-[1px] h-4 bg-[#2C3831]" />
                             <div className="w-2 h-2 rounded-sm bg-[#10B981]" />
                           </div>
-                          <div className="flex flex-col justify-between h-10 text-sm text-[#A1A1AA]">
+                          <div className="flex flex-col justify-between h-10 text-sm text-[#D1D5DB]">
                             <span>{ride.pickup_zone}</span>
                             <span>{ride.destination_zone}</span>
                           </div>
@@ -397,22 +397,22 @@ export default function DriverDashboard() {
         <div className="pt-4 pb-12 sm:pb-0">
           <div className="flex items-center justify-between mb-4 px-2">
             <h3 className="font-semibold text-lg text-[#F3F4F6]">Trip History</h3>
-            <Link href="/driver/history" className="text-sm font-medium text-[#F3F4F6] hover:text-[#A1A1AA] transition-colors flex items-center gap-1">
+            <Link href="/driver/history" className="text-sm font-medium text-[#F3F4F6] hover:text-[#D1D5DB] transition-colors flex items-center gap-1">
               View All <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
           <Link href="/driver/history">
-             <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-5 flex items-center justify-between hover:bg-[#1A211D] transition-colors cursor-pointer">
+             <div className="bg-[#1E2621] border border-[#3E4C44] rounded-2xl p-5 flex items-center justify-between hover:bg-[#1A211D] transition-colors cursor-pointer">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-[#0A0D0B] border border-[#2C3831] flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-[#A1A1AA]" />
+                  <div className="w-10 h-10 rounded-full bg-[#131815] border border-[#3E4C44] flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-[#D1D5DB]" />
                   </div>
                   <div>
                     <div className="font-medium text-sm text-[#F3F4F6]">Past Trips</div>
-                    <div className="text-xs text-[#A1A1AA] mt-0.5">Review your completed pools</div>
+                    <div className="text-xs text-[#D1D5DB] mt-0.5">Review your completed pools</div>
                   </div>
                 </div>
-                <div className="text-[#A1A1AA]"><ArrowRight className="w-4 h-4" /></div>
+                <div className="text-[#D1D5DB]"><ArrowRight className="w-4 h-4" /></div>
              </div>
           </Link>
         </div>
@@ -421,7 +421,7 @@ export default function DriverDashboard() {
 
       {/* Sticky Bottom Action Bar for Active Trip */}
       {activeStickyAction && (
-        <div className="fixed bottom-0 left-0 w-full p-4 sm:p-6 bg-gradient-to-t from-[#0A0D0B] via-[#0A0D0B]/90 to-transparent z-40">
+        <div className="fixed bottom-0 left-0 w-full p-4 sm:p-6 bg-gradient-to-t from-[#131815] via-[#131815]/90 to-transparent z-40">
           <div className="max-w-lg mx-auto">
             <button
               onClick={() => transitionPool(activeStickyAction.poolId, activeStickyAction.nextState)}

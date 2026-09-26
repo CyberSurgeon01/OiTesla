@@ -58,8 +58,8 @@ export default function Login() {
       </nav>
 
       {/* Background Ambient Glows */}
-      <div className="absolute top-1/3 left-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4F6BFF] opacity-20 blur-[120px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite]" />
-      <div className="absolute bottom-1/4 right-1/4 h-[300px] w-[300px] rounded-full bg-[#F59E0B] opacity-10 blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4F6BFF] opacity-10 blur-[120px] pointer-events-none animate-[pulse_6s_ease-in-out_infinite]" />
+      <div className="absolute bottom-1/4 right-1/4 h-[300px] w-[300px] rounded-full bg-[#F59E0B] opacity-5 blur-[100px] pointer-events-none" />
 
       {/* Glassmorphism Auth Card */}
       <div className="z-10 w-full max-w-[420px] rounded-[2rem] border border-white/10 bg-white/[0.02] p-8 sm:p-10 backdrop-blur-2xl shadow-2xl transition-all duration-500 hover:bg-white/[0.03] hover:border-white/20">

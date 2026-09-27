@@ -21,7 +21,12 @@ export default function Signup() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Optimistic UI update to prevent perceived lag (due to Render cold starts)
+    setStep('VERIFY');
     setLoading(true);
+    
+    toast({ title: "Sending...", description: "Securely connecting to server..." });
     
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/auth/signup`, {
@@ -33,14 +38,13 @@ export default function Signup() {
       const data = await res.json();
       
       if (!res.ok) {
+        setStep('REGISTER'); // Revert UI back if failed
         throw new Error(data.error || 'Signup failed');
       }
       
       if (data.requiresVerification) {
         toast({ title: "Check your email", description: "We've sent a 6-digit verification code." });
-        setStep('VERIFY');
       } else {
-        // Fallback for older code without verification
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         toast({ title: "Success", description: "Account created successfully" });

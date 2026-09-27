@@ -32,25 +32,38 @@ export const signup = async (req: Request, res: Response) => {
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: 'User with this email already exists' });
+      if (existingUser.is_verified) {
+        return res.status(400).json({ error: 'User with this email already exists' });
+      }
+      // If user exists but is NOT verified, we will overwrite their data with the new attempt
     }
 
     const password_hash = await bcrypt.hash(password, 10);
     const verify_code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
     const verify_expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name,
-        password_hash,
-        role,
-        is_verified: false,
-        verify_code,
-        verify_expires,
-        wallet_balance: role === 'PASSENGER' ? 100000 : 50000,
-      },
-    });
+    const userData = {
+      email,
+      name,
+      password_hash,
+      role,
+      is_verified: false,
+      verify_code,
+      verify_expires,
+      wallet_balance: role === 'PASSENGER' ? 100000 : 50000,
+    };
+
+    let user;
+    if (existingUser) {
+      user = await prisma.user.update({
+        where: { email },
+        data: userData,
+      });
+    } else {
+      user = await prisma.user.create({
+        data: userData,
+      });
+    }
 
     // Send the email (In development, this will just log if SMTP isn't valid, or use a console log)
     try {

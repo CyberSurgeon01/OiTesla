@@ -40,6 +40,7 @@ export const signup = async (req: Request, res: Response) => {
 
     const password_hash = await bcrypt.hash(password, 10);
     const verify_code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+    console.log(`\n🔑 [OTP GENERATED] for ${email}: ${verify_code}\n`);
     const verify_expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     const userData = {

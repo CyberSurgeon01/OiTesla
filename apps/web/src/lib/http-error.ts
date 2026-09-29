@@ -20,6 +20,7 @@ export function apiError(error: unknown, fallback: string) {
   if (error instanceof HttpError) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
+  const actualError = error instanceof Error ? error.message : String(error);
   console.error(fallback, error);
-  return NextResponse.json({ error: fallback }, { status: 500 });
+  return NextResponse.json({ error: `${fallback} (Debug: ${actualError})` }, { status: 500 });
 }

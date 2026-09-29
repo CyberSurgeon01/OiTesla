@@ -417,27 +417,27 @@ export default function PassengerDashboard() {
 
               {/* Advanced Stepper */}
               <div className="mb-16 px-10 sm:px-12">
-                <div className="relative">
-                  <div className="absolute left-0 right-0 top-2.5 h-0.5 bg-[#1E2621] rounded-full" />
+                <div className="relative h-5 flex items-center">
+                  <div className="absolute left-0 right-0 h-0.5 bg-[#1E2621]" />
                   <div 
-                    className="absolute left-0 top-2.5 h-0.5 bg-[#10B981] rounded-full transition-all duration-700 ease-in-out" 
+                    className="absolute left-0 h-0.5 bg-[#10B981] transition-all duration-700 ease-in-out" 
                     style={{ width: `${(currentStepIndex / (STEPS.length - 1)) * 100}%` }}
                   />
                   
-                  <div className="relative flex justify-between">
+                  <div className="absolute left-0 right-0 flex justify-between">
                     {STEPS.map((step, index) => {
                       const isActive = index === currentStepIndex;
                       const isPast = index <= currentStepIndex;
                       
                       return (
-                        <div key={step} className="relative flex flex-col items-center">
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${
+                        <div key={step} className="relative flex justify-center w-0">
+                          <div className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${
                             isPast ? 'bg-[#10B981] ' : 
                             isActive ? 'bg-[#10B981] ring-4 ring-[#10B981]/30 animate-pulse' : 'bg-[#131815] border border-[#2C3831]'
                           }`}>
                             {isPast && <div className="w-2 h-2 rounded-full bg-white" />}
                           </div>
-                          <span className={`absolute top-full mt-3 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest w-24 left-1/2 -translate-x-1/2 text-center transition-colors duration-300 ${
+                          <span className={`absolute top-5 mt-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest w-24 left-1/2 -translate-x-1/2 text-center transition-colors duration-300 ${
                             isActive ? 'text-[#F3F4F6]' : isPast ? 'text-[#10B981]' : 'text-[#71717A]'
                           }`}>
                             {step.replace('_', ' ')}

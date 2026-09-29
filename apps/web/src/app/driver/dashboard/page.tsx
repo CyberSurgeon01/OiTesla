@@ -393,13 +393,20 @@ export default function DriverDashboard() {
                                 return (
                                   <div key={step} className="relative flex justify-center w-0">
                                     <div className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${
-                                      isPast ? 'bg-[#10B981] ' : 
-                                      isActive ? 'bg-[#10B981] ring-4 ring-[#10B981]/30 animate-pulse' : 'bg-[#131815] border border-[#2C3831]'
+                                      isPast && !isActive ? 'bg-[#10B981]' : 
+                                      isActive ? 'bg-[#10B981] shadow-[0_0_12px_rgba(16,185,129,0.8)]' : 'bg-[#131815] border border-[#2C3831]'
                                     }`}>
-                                      {isPast && <div className="w-2 h-2 rounded-full bg-white" />}
+                                      {isActive && (
+                                        <>
+                                          <div className="absolute inset-0 rounded-full bg-[#10B981] animate-ping opacity-50" />
+                                          <div className="relative w-2 h-2 rounded-full bg-[#0A0D0B] z-20" />
+                                        </>
+                                      )}
+                                      {isPast && !isActive && <div className="w-2 h-2 rounded-full bg-white" />}
                                     </div>
-                                    <span className={`absolute top-5 mt-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest w-24 left-1/2 -translate-x-1/2 text-center transition-colors duration-300 ${
-                                      isActive ? 'text-[#F3F4F6]' : isPast ? 'text-[#10B981]' : 'text-[#71717A]'
+                                    <span className={`absolute top-5 mt-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest w-24 left-1/2 -translate-x-1/2 text-center transition-all duration-300 ${
+                                      isActive ? 'text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)] scale-105' : 
+                                      isPast ? 'text-[#F3F4F6]' : 'text-[#3F3F46]'
                                     }`}>
                                       {step.replace('_', ' ')}
                                     </span>

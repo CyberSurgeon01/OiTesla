@@ -85,6 +85,7 @@ function SearchableRouteSelect({ value, onChange, options, placeholder }: { valu
 export default function PassengerDashboard() {
   const [user, setUser] = useState<any>(null);
   const [activeRide, setActiveRide] = useState<any>(null);
+  const previousStatusRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -123,6 +124,14 @@ export default function PassengerDashboard() {
       if (res.ok) {
         const data = await res.json();
         setActiveRide(data);
+        if (data && previousStatusRef.current && previousStatusRef.current !== data.status) {
+          const status = data.status;
+          if (status === 'ACCEPTED') toast({ title: "Ride Accepted! 🚙", description: "A driver is on the way to your pickup location." });
+          else if (status === 'DRIVER_ARRIVED') toast({ title: "Driver Arrived! 📍", description: "Please meet your driver at the pickup point." });
+          else if (status === 'STARTED') toast({ title: "Trip Started! 🛣️", description: "You are now on your way to the destination." });
+          else if (status === 'COMPLETED') toast({ title: "Trip Completed! 🎉", description: "You have arrived at your destination." });
+        }
+        previousStatusRef.current = data ? data.status : null;
       }
     } catch (e) {
       console.error(e);
@@ -152,7 +161,7 @@ export default function PassengerDashboard() {
 
     const interval = setInterval(() => {
       fetchActiveRide(token);
-    }, 2500);
+    }, 1000);
     return () => clearInterval(interval);
   }, [router]);
 

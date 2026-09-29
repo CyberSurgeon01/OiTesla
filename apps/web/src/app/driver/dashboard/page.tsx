@@ -70,7 +70,7 @@ export default function DriverDashboard() {
     setUser(parsedUser);
     fetchPools(token);
     
-    const interval = setInterval(() => fetchPools(token), 2500);
+    const interval = setInterval(() => fetchPools(token), 1000);
     return () => clearInterval(interval);
   }, [router]);
 

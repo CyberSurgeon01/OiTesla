@@ -64,27 +64,41 @@ export default function DriverDashboard() {
     setStatusLoading(true);
     const token = localStorage.getItem('token');
     const newStatus = isOnline ? 'OFFLINE' : 'ONLINE';
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/driver/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (res.ok) {
-        setIsOnline(!isOnline);
-        toast({ 
-          title: !isOnline ? "You are Online" : "You are Offline",
-          description: !isOnline ? "Waiting for ride requests" : "You will not receive new requests",
-          variant: "default"
+    
+    const attempt = async (retries: number): Promise<boolean> => {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout for cold starts
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/driver/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ status: newStatus }),
+          signal: controller.signal
         });
-      } else {
+        clearTimeout(timeout);
+        if (res.ok) return true;
         throw new Error();
+      } catch (e) {
+        if (retries > 0) {
+          toast({ title: "Connecting...", description: "Server is waking up, retrying...", variant: "default" });
+          return attempt(retries - 1);
+        }
+        return false;
       }
-    } catch (e) {
-      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
-    } finally {
-      setStatusLoading(false);
+    };
+
+    const success = await attempt(2);
+    if (success) {
+      setIsOnline(!isOnline);
+      toast({ 
+        title: !isOnline ? "You are Online" : "You are Offline",
+        description: !isOnline ? "Waiting for ride requests" : "You will not receive new requests",
+        variant: "default"
+      });
+    } else {
+      toast({ title: "Error", description: "Failed to update status. Please try again.", variant: "destructive" });
     }
+    setStatusLoading(false);
   };
 
   const transitionPool = async (poolId: number, status: string) => {

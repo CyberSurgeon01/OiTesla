@@ -32,9 +32,10 @@ export async function requestRide(prisma: PrismaClient, passengerId: number, bod
     for (const candidate of candidates) {
       // All booking, cancellation, and pool transitions serialize on this row.
       const locked = await tx.$queryRaw<{ id: number }[]>`
-        SELECT id FROM "Vehicle" WHERE id = ${candidate.id} AND status = 'ONLINE' FOR UPDATE SKIP LOCKED`;
+        SELECT id FROM "Vehicle" WHERE id = ${candidate.id} FOR UPDATE SKIP LOCKED`;
       if (!locked.length) continue;
       const vehicle = await tx.vehicle.findUniqueOrThrow({ where: { id: candidate.id } });
+      if (vehicle.status !== 'ONLINE') continue;
       let pool = await tx.pool.findFirst({
         where: { vehicle_id: vehicle.id, status: 'ACTIVE' },
         include: { rideRequests: { where: activeRideWhere } },

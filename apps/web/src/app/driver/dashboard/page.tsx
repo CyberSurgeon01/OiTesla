@@ -365,9 +365,10 @@ export default function DriverDashboard() {
                     {activeRides.map((ride: any) => (
                       <div key={ride.id} className="p-5 flex flex-col gap-4">
                         <div className="flex justify-between items-start">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-sm text-[#F3F4F6]">{ride.passenger.name}</span>
-
+                          <div className="flex items-center text-sm font-medium text-[#F3F4F6]">
+                            <User className="mr-2 h-4 w-4 text-[#A1A1AA]" />
+                            {ride.passenger.name} 
+                            <span className="ml-2 text-[#A1A1AA]">({ride.seats_requested} seat{ride.seats_requested > 1 ? 's' : ''})</span>
                           </div>
                           <div className="font-medium bg-[#1E2621] border border-[#2C3831] px-2 py-1 rounded text-sm text-[#F3F4F6]">
                             ৳{(ride.fare_amount / 100).toFixed(2)}

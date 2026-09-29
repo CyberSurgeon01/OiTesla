@@ -51,7 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: { ride_id: st
            throw new Error('Not enough seat capacity');
         }
       } else {
-        pool = await tx.pool.create({ data: { vehicle_id: vehicle.id } });
+        pool = await tx.pool.create({ data: { vehicle_id: vehicle.id }, include: { rideRequests: true } });
       }
 
       const updatedRide = await tx.rideRequest.update({

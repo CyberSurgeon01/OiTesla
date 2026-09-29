@@ -14,6 +14,7 @@ export default function DriverDashboard() {
   const [user, setUser] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [activePools, setActivePools] = useState<any[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -23,8 +24,9 @@ export default function DriverDashboard() {
 
   const fetchPools = async (token: string) => {
     try {
-      const [res, statusRes] = await Promise.all([
+      const [res, reqRes, statusRes] = await Promise.all([
         fetch('/api/driver/pools', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/driver/requests', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/driver/status', { headers: { Authorization: `Bearer ${token}` } }),
       ]);
       if (statusRes.ok) setIsOnline((await readApiResponse(statusRes)).status === 'ONLINE');
@@ -37,7 +39,10 @@ export default function DriverDashboard() {
       if (res.ok) {
         const pools = await res.json();
         setActivePools(pools);
-
+      }
+      if (reqRes.ok) {
+        const requests = await reqRes.json();
+        setPendingRequests(requests);
       }
     } catch (e) {
       console.error(e);
@@ -120,6 +125,34 @@ export default function DriverDashboard() {
     }
   };
 
+  const acceptRequest = async (rideId: number) => {
+    setActionLoading(rideId);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`/api/driver/requests/${rideId}/accept`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/login');
+        return;
+      }
+      if (res.ok) {
+        fetchPools(token as string);
+        toast({ title: `Request Accepted`, description: `You have accepted the ride.` });
+      } else {
+        const data = await res.json();
+        toast({ title: "Action Failed", description: data.error, variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", description: "Network error occurred", variant: "destructive" });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -136,10 +169,6 @@ export default function DriverDashboard() {
   }
 
   const activeAndNotCancelled = (ride: any) => ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED';
-  
-  const pendingPools = activePools.filter(p => 
-    p.rideRequests.some((r: any) => activeAndNotCancelled(r) && (r.status === 'REQUESTED' || r.status === 'MATCHED'))
-  );
   
   const inProgressPools = activePools.filter(p => 
     p.rideRequests.some((r: any) => activeAndNotCancelled(r) && ['ACCEPTED', 'DRIVER_ARRIVED', 'STARTED'].includes(r.status))
@@ -252,28 +281,24 @@ export default function DriverDashboard() {
         {/* Incoming Requests */}
         <div className="space-y-4">
           <h2 className="text-2xl font-bold tracking-tight text-[#F3F4F6]">Incoming Requests</h2>
-          {pendingPools.length === 0 ? (
+          {pendingRequests.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#3F3F46] p-8 text-center text-[#A1A1AA] bg-[#131815]">
               <Navigation className="mx-auto h-8 w-8 opacity-50 mb-3" />
               <p>No new requests</p>
             </div>
           ) : (
-            pendingPools.map(pool => {
-              const activeRides = pool.rideRequests.filter(activeAndNotCancelled);
-              const seatsUsed = activeRides.reduce((acc: number, r: any) => acc + r.seats_requested, 0);
-              
+            pendingRequests.map(ride => {
               return (
-                <div key={pool.id} className="bg-[#131815] border border-[#2C3831] rounded-2xl overflow-hidden">
+                <div key={ride.id} className="bg-[#131815] border border-[#2C3831] rounded-2xl overflow-hidden">
                   <div className="p-5 border-b border-[#2C3831] flex justify-between items-center">
-                    <span className="text-[#F3F4F6] font-semibold">New Pool Assignment</span>
+                    <span className="text-[#F3F4F6] font-semibold">New Ride Request</span>
                     <div className="text-xs font-semibold uppercase tracking-widest text-[#10B981]">
-                      +{seatsUsed} seats
+                      +{ride.seats_requested} seats
                     </div>
                   </div>
                   
                   <div className="divide-y divide-[#1E2621]">
-                    {activeRides.map((ride: any) => (
-                      <div key={ride.id} className="p-5 flex flex-col gap-4">
+                      <div className="p-5 flex flex-col gap-4">
                         <div className="flex justify-between items-start">
                           <div className="flex items-center text-sm font-medium text-[#F3F4F6]">
                             <User className="mr-2 h-4 w-4 text-[#A1A1AA]" />
@@ -297,17 +322,16 @@ export default function DriverDashboard() {
                           </div>
                         </div>
                       </div>
-                    ))}
                   </div>
 
                   <div className="p-5 bg-[#1E2621]">
                     <button 
-                      onClick={() => transitionPool(pool.id, 'ACCEPTED')}
-                      disabled={actionLoading === pool.id}
+                      onClick={() => acceptRequest(ride.id)}
+                      disabled={actionLoading === ride.id}
                       className="w-full h-12 rounded-xl bg-[#F0FDF4] text-[#022C22] font-semibold text-sm transition-all duration-300 hover:bg-[#DCFCE7] disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      {actionLoading === pool.id && <Loader2 className="w-4 h-4 animate-spin" />}
-                      Accept Pool
+                      {actionLoading === ride.id && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Accept Request
                     </button>
                   </div>
                 </div>

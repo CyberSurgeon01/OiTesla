@@ -25,36 +25,7 @@ export async function requestRide(prisma: PrismaClient, passengerId: number, bod
     if (payment_method === 'TESLA_PAY' && passenger.wallet_balance < fare_amount) {
       throw new HttpError(409, 'Insufficient wallet balance');
     }
-    const candidates = await tx.vehicle.findMany({
-      where: { status: 'ONLINE', seat_capacity: { gte: seats_requested } },
-      orderBy: { id: 'asc' }, select: { id: true },
-    });
-    for (const candidate of candidates) {
-      // All booking, cancellation, and pool transitions serialize on this row.
-      const locked = await tx.$queryRaw<{ id: number }[]>`
-        SELECT id FROM "Vehicle" WHERE id = ${candidate.id} FOR UPDATE SKIP LOCKED`;
-      if (!locked.length) continue;
-      const vehicle = await tx.vehicle.findUniqueOrThrow({ where: { id: candidate.id } });
-      if (vehicle.status !== 'ONLINE') continue;
-      let pool = await tx.pool.findFirst({
-        where: { vehicle_id: vehicle.id, status: 'ACTIVE' },
-        include: { rideRequests: { where: activeRideWhere } },
-      });
-      if (pool) {
-        const rides = pool.rideRequests;
-        if (rides.some(ride => !waitingStatuses.includes(ride.status) || ride.pickup_zone !== pickup_zone)) continue;
-        if (rides.length && !isDestinationCompatible(pickup_zone, rides.map(ride => ride.destination_zone), destination_zone)) continue;
-        if (rides.reduce((sum, ride) => sum + ride.seats_requested, 0) + seats_requested > vehicle.seat_capacity) continue;
-      } else {
-        pool = await tx.pool.create({ data: { vehicle_id: vehicle.id }, include: { rideRequests: true } });
-      }
-      const ride = await tx.rideRequest.create({ data: {
-        passenger_id: passengerId, pool_id: pool.id, pickup_zone, destination_zone,
-        seats_requested, payment_method, fare_amount, status: 'REQUESTED',
-      } });
-      return { ride, pool_id: pool.id };
-    }
-    throw new HttpError(409, 'No available vehicles found. Please try again.');
+    return { ride: await tx.rideRequest.create({ data: { passenger_id: passengerId, pickup_zone, destination_zone, seats_requested, payment_method, fare_amount, status: "REQUESTED" } }) };
   }, { maxWait: 10000, timeout: 15000 });
 }
 

@@ -21,7 +21,7 @@ export default function DriverDashboard() {
 
   const fetchPools = async (token: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/driver/pools`, {
+      const res = await fetch(`/api/driver/pools`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -69,7 +69,7 @@ export default function DriverDashboard() {
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout for cold starts
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/driver/status`, {
+        const res = await fetch(`/api/driver/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ status: newStatus }),
@@ -105,7 +105,7 @@ export default function DriverDashboard() {
     setActionLoading(poolId);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/driver/pools/${poolId}/status`, {
+      const res = await fetch(`/api/driver/pools/${poolId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status })

@@ -122,7 +122,7 @@ export default function PassengerDashboard() {
 
   const fetchActiveRide = async (token: string) => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/passenger/rides/active`, {
+      const res = await fetch(`/api/passenger/rides/active`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -167,7 +167,7 @@ export default function PassengerDashboard() {
     const token = localStorage.getItem('token');
     
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/rides`, {
+      const res = await fetch(`/api/rides`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ pickup_zone: pickup, destination_zone: destination, seats_requested: seats, payment_method: paymentMethod })
@@ -190,7 +190,7 @@ export default function PassengerDashboard() {
     setCancelling(true);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/rides/${activeRide.id}/status`, {
+      const res = await fetch(`/api/rides/${activeRide.id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'CANCELLED' })

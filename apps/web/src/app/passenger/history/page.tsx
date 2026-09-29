@@ -17,7 +17,7 @@ export default function PassengerHistory() {
         return;
       }
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/passenger/rides/history`, {
+        const res = await fetch(`/api/passenger/rides/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {

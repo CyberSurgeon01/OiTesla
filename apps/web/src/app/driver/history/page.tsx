@@ -17,7 +17,7 @@ export default function DriverHistory() {
         return;
       }
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/driver/history`, {
+        const res = await fetch(`/api/driver/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {

@@ -108,7 +108,7 @@ export default function Signup() {
               <div className="space-y-1.5">
                 <label htmlFor="name" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
                 <input 
-                  id="name" type="text" placeholder="John Doe" 
+                  id="name" type="text" placeholder="Rahul Chandra Shil" 
                   value={name} onChange={(e) => setName(e.target.value)} required disabled={loading}
                   className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#10B981] focus:outline-none focus:ring-1 focus:ring-[#10B981] transition-all disabled:opacity-50"
                 />
@@ -117,7 +117,7 @@ export default function Signup() {
               <div className="space-y-1.5">
                 <label htmlFor="email" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Email</label>
                 <input 
-                  id="email" type="email" placeholder="m@example.com" 
+                  id="email" type="email" placeholder="name@gmail.com" 
                   value={email} onChange={(e) => setEmail(e.target.value)} required disabled={loading}
                   className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#10B981] focus:outline-none focus:ring-1 focus:ring-[#10B981] transition-all disabled:opacity-50"
                 />

@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { readApiResponse } from '@/lib/api-response';
 import { Loader2, ArrowLeft, Mail } from 'lucide-react';
 
 function VerifyContent() {
@@ -24,7 +25,7 @@ function VerifyContent() {
         body: JSON.stringify({ email, code }),
       });
       
-      const data = await res.json();
+      const data = await readApiResponse(res);
       
       if (!res.ok) {
         throw new Error(data.error || 'Verification failed');

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getPrisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
 import { RideStatus } from '@prisma/client';
 
@@ -10,6 +10,7 @@ export async function GET(req: NextRequest) {
     if (!user || user.role !== 'PASSENGER') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    const prisma = getPrisma();
 
     const passenger_id = user.id;
     const history = await prisma.rideRequest.findMany({

@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && next build",
+    "build": "node scripts/check-env.cjs && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:integration": "node --test tests/*.integration.mjs",
     "postinstall": "npx prisma generate"
   },
   "dependencies": {

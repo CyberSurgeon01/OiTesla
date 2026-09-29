@@ -20,6 +20,12 @@ export default function PassengerHistory() {
         const res = await fetch(`/api/passenger/rides/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          router.push('/login');
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           data.sort((a: any, b: any) => new Date(b.requested_at).getTime() - new Date(a.requested_at).getTime());

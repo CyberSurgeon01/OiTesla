@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { readApiResponse } from '@/lib/api-response';
 import { Loader2, ArrowLeft } from 'lucide-react';
 
 export default function Login() {
@@ -23,7 +24,7 @@ export default function Login() {
         body: JSON.stringify({ email, password }),
       });
       
-      const data = await res.json();
+      const data = await readApiResponse(res);
       
       if (!res.ok) {
         if (data.requiresVerification) {

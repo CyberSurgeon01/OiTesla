@@ -1,14 +1,11 @@
 import { PrismaClient } from '@prisma/client';
+import { requireEnvironment } from './server-config';
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | null };
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-let prismaInstance: PrismaClient | null = null;
-
-try {
-  prismaInstance = globalForPrisma.prisma || new PrismaClient();
-  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prismaInstance;
-} catch (e) {
-  console.error("PRISMA INIT ERROR:", e);
+// Initialize inside request handlers so configuration failures return JSON.
+export function getPrisma(): PrismaClient {
+  requireEnvironment('DATABASE_URL');
+  globalForPrisma.prisma ??= new PrismaClient();
+  return globalForPrisma.prisma;
 }
-
-export const prisma = prismaInstance as PrismaClient;

@@ -28,7 +28,7 @@ services:
       - "${API_PORT:-3001}:3001"
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/oitesla?schema=public}
-      - JWT_SECRET=${JWT_SECRET:-supersecretjwtkey123}
+      - JWT_SECRET=${JWT_SECRET:-oitesla-local-development-only}
       - PORT=${API_PORT:-3001}
     volumes:
       - ./apps/api:/app
@@ -51,7 +51,10 @@ services:
     ports:
       - "${WEB_PORT:-3000}:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/oitesla?schema=public}
+      - JWT_SECRET=${JWT_SECRET:-oitesla-local-development-only}
+      - BREVO_API_KEY=${BREVO_API_KEY:-}
+      - BREVO_SENDER=${BREVO_SENDER:-}
     volumes:
       - ./apps/web:/app
       - /app/node_modules

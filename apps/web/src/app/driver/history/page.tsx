@@ -20,6 +20,12 @@ export default function DriverHistory() {
         const res = await fetch(`/api/driver/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });
+        if (res.status === 401 || res.status === 403) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          router.push('/login');
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           setHistory(data);

@@ -15,7 +15,7 @@ Designed with a sleek, ultra-minimalist **Monochrome Deep Green & Mint** identit
 
 ### 👥 Passenger Experience
 - **Dynamic Fare Engine**: Real-time fare previews based on distance algorithms and automatic pooling discounts.
-- **Live Ride Tracking**: A sleek, animated visual stepper (`REQUESTED` → `MATCHED` → `DRIVER_ARRIVED` → `STARTED` → `COMPLETED`) tracks the ride lifecycle.
+- **Live Ride Tracking**: A sleek, animated visual stepper (`REQUESTED` → `ACCEPTED` → `DRIVER_ARRIVED` → `STARTED` → `COMPLETED`) tracks the ride lifecycle.
 - **Ride History**: Dedicated views to track past completed and cancelled trips with fare summaries.
 
 ### 🏎️ Driver Experience
@@ -25,7 +25,7 @@ Designed with a sleek, ultra-minimalist **Monochrome Deep Green & Mint** identit
 
 ### ⚙️ Engineering & Architecture
 - **Real-Time State Sync**: Implements highly optimized short-interval HTTP polling (2.5s) to guarantee zero drift between Passenger and Driver views without the overhead of WebSockets for MVP scale.
-- **Role-Based Auth**: Secure JWT authentication. Database is modeled with a compound unique constraint (`@@unique([email, role])`), allowing developers/QA to test both Driver and Passenger flows using the same email address.
+- **Role-Based Auth**: Secure JWT authentication. Each email identifies one account with either the Driver or Passenger role; use separate emails to test both roles.
 - **Idempotent Transactions**: Uses strict pessimistic row-level locking (`SELECT ... FOR UPDATE SKIP LOCKED`) in PostgreSQL to prevent double-booking during extreme concurrency bursts.
 - **Integer Currency**: All financial data (fares, wallets) are calculated and stored in integers (`poysha`) to eliminate float precision errors.
 
@@ -36,8 +36,7 @@ Designed with a sleek, ultra-minimalist **Monochrome Deep Green & Mint** identit
 ```mermaid
 flowchart LR
     Browser[Web Browser] -->|HTTP / JSON| NextJS[Next.js 14 App Router]
-    NextJS -->|REST API| Express[Express Node.js API]
-    Express -->|Prisma Client| Postgres[(PostgreSQL 15)]
+    NextJS -->|Next.js API routes and Prisma| Postgres[(PostgreSQL 15)]
 ```
 
 ### Entity-Relationship Diagram
@@ -107,6 +106,12 @@ OiTesla is fully containerized for a zero-configuration cold boot.
 
 *Note: The `api` container is wired to automatically generate the Prisma client, deploy migrations, and run the idempotent seed script (`apps/api/prisma/seed.ts`) before starting the server. Next.js runs on port `3000` and the API runs on `3001`.*
 
+### Vercel deployment
+
+Use `apps/web` as the Vercel project root. Its Next.js API routes connect directly to PostgreSQL, so set a **nonempty `DATABASE_URL`** in the project's environment variables for Production (and Preview if needed). Use the connection string from the existing database provider; the blank value in `apps/web/.env.example` is only a placeholder. Configure `JWT_SECRET`, `BREVO_API_KEY`, and `BREVO_SENDER` there as well.
+
+Redeploy after changing environment variables so the deployment receives the new values. If login returns HTTP 500, inspect Vercel's runtime logs for `/api/auth/login`. `/api/health` checks the database connection and returns HTTP 503 when it is unavailable. Vercel builds reject empty `DATABASE_URL` and `JWT_SECRET` values. Production signup also requires valid `BREVO_API_KEY` and `BREVO_SENDER` values; email delivery failures are reported instead of claiming success.
+
 ---
 
 ## 🧪 Testing
@@ -117,6 +122,17 @@ The test suite utilizes Jest and Supertest to rigorously validate pooling concur
 # Execute within the running API container
 docker compose exec api npm run test
 ```
+
+Web regression tests run separately with Node.js 22.6 or newer:
+
+```bash
+cd apps/web
+npm test
+```
+
+For database integration tests, use a dedicated local PostgreSQL database named `oitesla_test`. Set `DATABASE_URL` to that database, run `npx prisma migrate deploy`, and start the web app on port 3107 with `BREVO_API_KEY= BREVO_SENDER= JWT_SECRET=local-integration-test-secret npm run dev -- --hostname 127.0.0.1 --port 3107`. Then run `npm run test:integration` with the same `DATABASE_URL`. The test runner refuses remote databases and removes only the accounts it creates. These tests use development verification codes from the local database; they do not send email.
+
+Verified drivers receive an offline Tesla vehicle with the MVP default of three passenger seats. Existing verified drivers without a vehicle receive one at their next login.
 
 ---
 

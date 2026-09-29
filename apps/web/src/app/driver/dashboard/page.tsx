@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { readStoredUser } from '@/lib/session';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, User, MapPin, Navigation, Flag, LogOut, ArrowRight, Clock, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { readApiResponse } from '@/lib/api-response';
 
 const STEPS = ['REQUESTED', 'MATCHED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'];
 
@@ -21,15 +23,21 @@ export default function DriverDashboard() {
 
   const fetchPools = async (token: string) => {
     try {
-      const res = await fetch(`/api/driver/pools`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const [res, statusRes] = await Promise.all([
+        fetch('/api/driver/pools', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/driver/status', { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      if (statusRes.ok) setIsOnline((await readApiResponse(statusRes)).status === 'ONLINE');
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/login');
+        return;
+      }
       if (res.ok) {
         const pools = await res.json();
         setActivePools(pools);
-        if (pools.length > 0 && pools[0].vehicle) {
-          setIsOnline(pools[0].vehicle.status === 'ONLINE');
-        }
+
       }
     } catch (e) {
       console.error(e);
@@ -47,7 +55,8 @@ export default function DriverDashboard() {
       return;
     }
     
-    const parsedUser = JSON.parse(storedUser);
+    const parsedUser = readStoredUser();
+    if (!parsedUser) { router.push('/login'); return; }
     if (parsedUser.role !== 'DRIVER') {
       router.push('/passenger/dashboard');
       return;
@@ -65,40 +74,21 @@ export default function DriverDashboard() {
     const token = localStorage.getItem('token');
     const newStatus = isOnline ? 'OFFLINE' : 'ONLINE';
     
-    const attempt = async (retries: number): Promise<boolean> => {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout for cold starts
-        const res = await fetch(`/api/driver/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ status: newStatus }),
-          signal: controller.signal
-        });
-        clearTimeout(timeout);
-        if (res.ok) return true;
-        throw new Error();
-      } catch (e) {
-        if (retries > 0) {
-          toast({ title: "Connecting...", description: "Server is waking up, retrying...", variant: "default" });
-          return attempt(retries - 1);
-        }
-        return false;
-      }
-    };
-
-    const success = await attempt(2);
-    if (success) {
-      setIsOnline(!isOnline);
-      toast({ 
-        title: !isOnline ? "You are Online" : "You are Offline",
-        description: !isOnline ? "Waiting for ride requests" : "You will not receive new requests",
-        variant: "default"
+    try {
+      const res = await fetch('/api/driver/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus }),
       });
-    } else {
-      toast({ title: "Error", description: "Failed to update status. Please try again.", variant: "destructive" });
+      const data = await readApiResponse(res);
+      if (!res.ok) throw new Error(data.error || 'Failed to update status');
+      setIsOnline(data.status === 'ONLINE');
+      toast({ title: data.status === 'ONLINE' ? 'You are Online' : 'You are Offline' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setStatusLoading(false);
     }
-    setStatusLoading(false);
   };
 
   const transitionPool = async (poolId: number, status: string) => {
@@ -110,6 +100,12 @@ export default function DriverDashboard() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status })
       });
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/login');
+        return;
+      }
       if (res.ok) {
         fetchPools(token as string);
         toast({ title: `Status Updated`, description: `Pool marked as ${status.replace('_', ' ')}` });

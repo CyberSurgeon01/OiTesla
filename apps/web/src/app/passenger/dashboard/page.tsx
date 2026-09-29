@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { readStoredUser } from '@/lib/session';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -8,28 +9,16 @@ import {
   Search, Wallet, Clock, LogOut, ArrowRight, X, User, Navigation
 } from 'lucide-react';
 
-const ZONES = ['Banani', 'Gulshan', 'Mohakhali', 'Dhanmondi', 'Mirpur', 'Uttara', 'Farmgate', 'Bashundhara'];
-const STEPS = ['REQUESTED', 'MATCHED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'];
+import { ZONES } from '@/lib/pooling/geography';
+import { fareBreakdown } from '@/lib/fare/fare.calculator';
+import { readApiResponse } from '@/lib/api-response';
+const STEPS = ['REQUESTED', 'ACCEPTED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'];
 
-const DISTANCE_MAP: Record<string, Record<string, number>> = {
-  'Banani': { 'Mohakhali': 2, 'Gulshan': 3, 'Farmgate': 5, 'Dhanmondi': 8, 'Mirpur': 7, 'Uttara': 9, 'Bashundhara': 6 },
-  'Gulshan': { 'Mohakhali': 3, 'Bashundhara': 6, 'Banani': 3, 'Dhanmondi': 9 },
-  'Mohakhali': { 'Farmgate': 3, 'Gulshan': 3, 'Banani': 2, 'Dhanmondi': 6 },
-  'Farmgate': { 'Dhanmondi': 3, 'Mohakhali': 3, 'Banani': 5 },
-  'Dhanmondi': { 'Farmgate': 3, 'Banani': 8, 'Gulshan': 9, 'Mohakhali': 6 }
-};
-
-function calculateFarePreview(pickup: string, dest: string, seats: number) {
+function calculateFarePreview(pickup: string, dest: string) {
   if (pickup === dest) return null;
-  const distanceKm = DISTANCE_MAP[pickup]?.[dest] || 5;
-  const baseFare = 30; 
-  const distanceCharge = distanceKm * 15;
-  const poolDiscount = 10;
-  
-  let fare = baseFare + distanceCharge - poolDiscount;
-  if (fare < 20) fare = 20;
-  
-  return { baseFare, distanceCharge, distanceKm, poolDiscount, total: fare };
+  const fare = fareBreakdown(pickup, dest);
+  return { ...fare, baseFare: fare.baseFare / 100, distanceCharge: fare.distanceCharge / 100,
+    poolDiscount: fare.poolDiscount / 100, total: fare.total / 100 };
 }
 
 // Custom Searchable Dropdown component replacing Pill grids
@@ -114,7 +103,7 @@ export default function PassengerDashboard() {
   useEffect(() => {
     setIsCalculating(true);
     const timer = setTimeout(() => {
-      setFarePreview(calculateFarePreview(pickup, destination, seats));
+      setFarePreview(calculateFarePreview(pickup, destination));
       setIsCalculating(false);
     }, 400); // 400ms simulate network delay
     return () => clearTimeout(timer);
@@ -125,6 +114,12 @@ export default function PassengerDashboard() {
       const res = await fetch(`/api/passenger/rides/active`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/login');
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setActiveRide(data);
@@ -145,7 +140,8 @@ export default function PassengerDashboard() {
       return;
     }
     
-    const parsedUser = JSON.parse(storedUser);
+    const parsedUser = readStoredUser();
+    if (!parsedUser) { router.push('/login'); return; }
     if (parsedUser.role !== 'PASSENGER') {
       router.push('/driver/dashboard');
       return;
@@ -173,7 +169,7 @@ export default function PassengerDashboard() {
         body: JSON.stringify({ pickup_zone: pickup, destination_zone: destination, seats_requested: seats, payment_method: paymentMethod })
       });
       
-      const data = await res.json();
+      const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.error || 'Failed to request ride');
       
       toast({ title: "Request Sent", description: "Finding the best route for you..." });
@@ -195,6 +191,12 @@ export default function PassengerDashboard() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'CANCELLED' })
       });
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/login');
+        return;
+      }
       if (res.ok) {
         setActiveRide(null);
       } else {
@@ -224,7 +226,7 @@ export default function PassengerDashboard() {
   }
 
   const isRideActive = activeRide && activeRide.status !== 'CANCELLED';
-  const canCancel = activeRide && ['REQUESTED', 'MATCHED'].includes(activeRide.status);
+  const canCancel = activeRide && ['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED'].includes(activeRide.status);
   
   let currentStepIndex = 0;
   if (activeRide) {
@@ -291,8 +293,8 @@ export default function PassengerDashboard() {
                       </button>
                       <span className="font-semibold text-sm w-4 text-center">{seats}</span>
                       <button 
-                        onClick={() => setSeats(Math.min(4, seats + 1))}
-                        disabled={seats >= 4}
+                        onClick={() => setSeats(Math.min(3, seats + 1))}
+                        disabled={seats >= 3}
                         className="text-[#A1A1AA] hover:text-[#F3F4F6] disabled:opacity-30 disabled:hover:text-[#A1A1AA] transition-colors"
                       >
                         <Plus className="w-4 h-4" />
@@ -334,7 +336,7 @@ export default function PassengerDashboard() {
                       <div className="rounded-lg bg-[#131815] border border-[#2C3831] border border-[#4F6BFF]/20 p-2.5 flex items-start gap-2">
                         <Car className="w-4 h-4 text-[#10B981] mt-0.5 flex-shrink-0" />
                         <p className="text-xs text-[#10B981] leading-relaxed">
-                          Includes ৳{farePreview.poolDiscount} discount. Pooled with up to {4 - seats} riders going your way.
+                          Includes ৳{farePreview.poolDiscount} discount. Pooled with up to {3 - seats} riders going your way.
                         </p>
                       </div>
                     )}

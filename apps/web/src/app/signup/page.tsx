@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { readApiResponse } from '@/lib/api-response';
 import { Loader2, ArrowLeft, Mail } from 'lucide-react';
 
 export default function Signup() {
@@ -22,8 +23,6 @@ export default function Signup() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Optimistic UI update to prevent perceived lag (due to Render cold starts)
-    setStep('VERIFY');
     setLoading(true);
     
     toast({ title: "Sending...", description: "Securely connecting to server..." });
@@ -35,14 +34,14 @@ export default function Signup() {
         body: JSON.stringify({ name, email, password, role }),
       });
       
-      const data = await res.json();
+      const data = await readApiResponse(res);
       
       if (!res.ok) {
-        setStep('REGISTER'); // Revert UI back if failed
         throw new Error(data.error || 'Signup failed');
       }
       
       if (data.requiresVerification) {
+        setStep('VERIFY');
         toast({ title: "Check your email", description: "We've sent a 6-digit verification code." });
       } else {
         localStorage.setItem('token', data.token);
@@ -51,6 +50,7 @@ export default function Signup() {
         router.push(data.user.role === 'DRIVER' ? '/driver/dashboard' : '/passenger/dashboard');
       }
     } catch (err: any) {
+      setStep('REGISTER');
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
@@ -68,7 +68,7 @@ export default function Signup() {
         body: JSON.stringify({ email, code }),
       });
       
-      const data = await res.json();
+      const data = await readApiResponse(res);
       
       if (!res.ok) {
         throw new Error(data.error || 'Verification failed');
@@ -126,7 +126,7 @@ export default function Signup() {
               <div className="space-y-1.5">
                 <label htmlFor="password" className="text-xs font-semibold text-gray-400 uppercase tracking-widest ml-1">Password</label>
                 <input 
-                  id="password" type="password" placeholder="••••••••"
+                  id="password" type="password" minLength={8} autoComplete="new-password" placeholder="••••••••"
                   value={password} onChange={(e) => setPassword(e.target.value)} required disabled={loading}
                   className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder-gray-600 focus:border-[#10B981] focus:outline-none focus:ring-1 focus:ring-[#10B981] transition-all disabled:opacity-50"
                 />

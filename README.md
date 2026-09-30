@@ -1,5 +1,10 @@
 # OiTesla
 
+## Project Links
+
+- [🎥 Watch the Project Demonstration Video](https://drive.google.com/drive/folders/1o5F7bJuBndDDXMIgcnhcLcZhn1KDT1Vs?usp=share_link)
+- [🚀 Open the Live Project](https://oi-tesla.vercel.app/)
+
 **OiTesla** is a premium, full-stack ride-sharing application specializing in luxury Tesla EV carpools. It features robust role-based access control, real-time simulated state synchronization, JWT authentication, and a bespoke "Cyber/Neon" user interface.
 
 The application uses a **Broadcast Model** where passengers request rides and drivers view all available local requests, manually accepting passengers into their active pool up to their vehicle's seat capacity.

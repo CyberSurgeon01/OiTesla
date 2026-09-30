@@ -1,38 +1,36 @@
 
-// For MVP, arbitrary base distances in KM between adjacent zones.
-// We'll build a simple map. Since we don't have real routing, 
-// we will just define direct pairwise distances.
-
-// Distance in KM (approximate mock data for MVP)
 const DISTANCE_MAP: Record<string, Record<string, number>> = {
-  'Banani': { 'Mohakhali': 2, 'Gulshan': 3, 'Farmgate': 5, 'Dhanmondi': 8 },
-  'Gulshan': { 'Mohakhali': 3, 'Bashundhara': 6, 'Banani': 3 },
-  'Mohakhali': { 'Farmgate': 3, 'Gulshan': 3, 'Banani': 2 },
-  'Farmgate': { 'Dhanmondi': 3, 'Mohakhali': 3, 'Banani': 5 },
-  'Dhanmondi': { 'Farmgate': 3, 'Banani': 8 }
+  'Banani': { 'Mohakhali': 2, 'Gulshan': 3, 'Farmgate': 5, 'Dhanmondi': 8, 'Bashundhara': 6 },
+  'Gulshan': { 'Mohakhali': 3, 'Bashundhara': 6, 'Banani': 3, 'Dhanmondi': 9, 'Farmgate': 7 },
+  'Mohakhali': { 'Farmgate': 3, 'Gulshan': 3, 'Banani': 2, 'Dhanmondi': 6, 'Bashundhara': 8 },
+  'Farmgate': { 'Dhanmondi': 3, 'Mohakhali': 3, 'Banani': 5, 'Gulshan': 7, 'Bashundhara': 10 },
+  'Dhanmondi': { 'Farmgate': 3, 'Banani': 8, 'Gulshan': 9, 'Mohakhali': 6, 'Bashundhara': 12 },
+  'Bashundhara': { 'Banani': 6, 'Gulshan': 6, 'Mohakhali': 8, 'Farmgate': 10, 'Dhanmondi': 12 }
 };
 
 export const BASE_FARE_POYSHA = 3000; // 30 BDT
 export const PER_KM_CHARGE_POYSHA = 1500; // 15 BDT per KM
-export const POOL_DISCOUNT_POYSHA = 1000; // Flat 10 BDT discount for opting into a pool
 
-export function fareBreakdown(pickup: string, destination: string, isPooled = true) {
+export function fareBreakdown(pickup: string, destination: string, seats: number = 1) {
   const distanceKm = DISTANCE_MAP[pickup]?.[destination] || 5;
   const baseFare = BASE_FARE_POYSHA;
   const distanceCharge = distanceKm * PER_KM_CHARGE_POYSHA;
-  const poolDiscount = isPooled ? POOL_DISCOUNT_POYSHA : 0;
-  return { distanceKm, baseFare, distanceCharge, poolDiscount, total: Math.max(2000, baseFare + distanceCharge - poolDiscount) };
+  
+  // As per screenshot: Base + Distance = Fare per seat
+  const farePerSeat = baseFare + distanceCharge;
+  
+  // Total is Fare per seat * seats
+  const total = farePerSeat * seats;
+
+  return { 
+    distanceKm, 
+    baseFare, 
+    distanceCharge, 
+    farePerSeat, 
+    total: Math.max(3000, total) // minimum 30 tk
+  };
 }
 
-/**
- * Calculates the fare for a passenger based on the formula:
- * passengerFare = baseFare + distanceCharge - poolDiscount
- * 
- * @param pickupZone - Start zone
- * @param destinationZone - End zone
- * @param isPooled - True if the passenger opted for pool (always true for this MVP app)
- * @returns Total fare in poysha (integer)
- */
-export const calculateFare = (pickupZone: string, destinationZone: string, isPooled: boolean = true): number => {
-  return fareBreakdown(pickupZone, destinationZone, isPooled).total;
+export const calculateFare = (pickupZone: string, destinationZone: string, seats: number = 1): number => {
+  return fareBreakdown(pickupZone, destinationZone, seats).total;
 };

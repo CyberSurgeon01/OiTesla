@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Loader2, Minus, Plus, Car, AlertCircle, ChevronDown, Check, 
-  Search, Wallet, Clock, LogOut, ArrowRight, X, User, Navigation
+  Search, Wallet, Clock, LogOut, ArrowRight, X, User, Navigation, ArrowRightLeft
 } from 'lucide-react';
 
 import { ZONES } from '@/lib/pooling/geography';
@@ -14,11 +14,11 @@ import { fareBreakdown } from '@/lib/fare/fare.calculator';
 import { readApiResponse } from '@/lib/api-response';
 const STEPS = ['REQUESTED', 'ACCEPTED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'];
 
-function calculateFarePreview(pickup: string, dest: string) {
+function calculateFarePreview(pickup: string, dest: string, seats: number = 1) {
   if (pickup === dest) return null;
-  const fare = fareBreakdown(pickup, dest);
+  const fare = fareBreakdown(pickup, dest, seats);
   return { ...fare, baseFare: fare.baseFare / 100, distanceCharge: fare.distanceCharge / 100,
-    poolDiscount: fare.poolDiscount / 100, total: fare.total / 100 };
+    farePerSeat: fare.farePerSeat / 100, total: fare.total / 100 };
 }
 
 // Custom Searchable Dropdown component replacing Pill grids
@@ -108,7 +108,7 @@ export default function PassengerDashboard() {
   useEffect(() => {
     setIsCalculating(true);
     const timer = setTimeout(() => {
-      setFarePreview(calculateFarePreview(pickup, destination));
+      setFarePreview(calculateFarePreview(pickup, destination, seats));
       setIsCalculating(false);
     }, 400); // 400ms simulate network delay
     return () => clearTimeout(timer);
@@ -364,85 +364,91 @@ export default function PassengerDashboard() {
             
             {/* Request Card */}
             <div className="bg-[#131815] border border-[#2C3831] rounded-3xl p-6 shadow-2xl backdrop-blur-sm">
-              
-              {/* Route Picker */}
-              <div className="flex gap-4">
-                <div className="flex flex-col items-center mt-5 mb-5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-white " />
-                  <div className="w-0.5 flex-1 bg-[#1E2621] my-1 rounded-full" />
-                  <div className="w-2.5 h-2.5 rounded-sm bg-[#10B981] " />
+              <div className="space-y-4 relative z-20">
+                <div className="flex gap-4">
+                  <div className="flex-1 space-y-1">
+                    <label className="text-xs font-semibold text-[#F3F4F6] ml-1">Pickup zone</label>
+                    <SearchableRouteSelect value={pickup} onChange={setPickup} options={ZONES} placeholder="Pickup Location" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <label className="text-xs font-semibold text-[#F3F4F6] ml-1">Destination zone</label>
+                    <SearchableRouteSelect value={destination} onChange={setDestination} options={ZONES} placeholder="Destination" />
+                  </div>
                 </div>
-                <div className="flex-1 space-y-3 relative z-20">
-                  <SearchableRouteSelect value={pickup} onChange={setPickup} options={ZONES} placeholder="Pickup Location" />
-                  <SearchableRouteSelect value={destination} onChange={setDestination} options={ZONES} placeholder="Destination" />
-                </div>
+                
+                <button 
+                  onClick={() => { const temp = pickup; setPickup(destination); setDestination(temp); }}
+                  className="flex items-center gap-2 text-sm font-medium text-[#F3F4F6] hover:text-[#10B981] transition-colors py-1 ml-1"
+                >
+                  <ArrowRightLeft className="w-4 h-4" /> Swap pickup and destination
+                </button>
               </div>
 
-              {/* Options Row */}
-              <div className="mt-8 flex items-center justify-between border-t border-[#2C3831] pt-6 relative z-10">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#131815] border border-[#2C3831] text-[#10B981]">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-[#A1A1AA] uppercase tracking-wider font-semibold mb-1">Seats</div>
-                    <div className="flex items-center gap-3 bg-[#0A0D0B] border border-[#2C3831] rounded-full px-3 py-1 border border-[#2C3831]">
-                      <button 
-                        onClick={() => setSeats(Math.max(1, seats - 1))}
-                        disabled={seats <= 1}
-                        className="text-[#A1A1AA] hover:text-[#F3F4F6] disabled:opacity-30 disabled:hover:text-[#A1A1AA] transition-colors"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="font-semibold text-sm w-4 text-center">{seats}</span>
-                      <button 
-                        onClick={() => setSeats(Math.min(3, seats + 1))}
-                        disabled={seats >= 3}
-                        className="text-[#A1A1AA] hover:text-[#F3F4F6] disabled:opacity-30 disabled:hover:text-[#A1A1AA] transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+              <div className="mt-8">
+                <div className="text-sm font-semibold text-[#F3F4F6] mb-3 ml-1">Seats</div>
+                <div className="flex gap-3">
+                  {[1, 2, 3].map(num => (
+                    <button
+                      key={num}
+                      onClick={() => setSeats(num)}
+                      className={`flex-1 py-3 rounded-xl font-bold transition-all border ${
+                        seats === num 
+                          ? 'bg-[#10B981] text-[#022C22] border-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
+                          : 'bg-[#0A0D0B] text-[#F3F4F6] border-[#2C3831] hover:border-[#10B981]/50'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
                 </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#0A0D0B] border border-[#2C3831] text-[#D1D5DB]">
-                    <Wallet className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-[#A1A1AA] uppercase tracking-wider font-semibold mb-1">Payment</div>
-                    <div className="text-sm font-semibold text-[#F3F4F6]">Cash</div>
-                  </div>
-                </div>
+                <p className="text-xs text-[#A1A1AA] mt-3 ml-1">A Tesla has 3 seats — book for you and your group.</p>
               </div>
 
               {/* Fare Preview Box */}
-              <div className="mt-6 rounded-2xl bg-[#0A0D0B] border border-[#2C3831] p-5 min-h-[120px] flex flex-col justify-center relative z-0 transition-all">
+              <div className="mt-8 border-t border-[#2C3831] pt-6 min-h-[220px] relative z-0 transition-all">
                 {isCalculating ? (
-                  <div className="flex flex-col items-center justify-center animate-pulse space-y-3">
+                  <div className="flex flex-col items-center justify-center h-[200px] animate-pulse space-y-3">
                     <div className="h-6 w-24 bg-white/10 rounded-md" />
                     <div className="h-4 w-40 bg-[#0A0D0B] border border-[#2C3831] rounded-md" />
                   </div>
                 ) : pickup === destination ? (
-                  <div className="flex items-center justify-center text-red-400 gap-2">
+                  <div className="flex items-center justify-center h-[200px] text-red-400 gap-2">
                     <AlertCircle className="w-5 h-5" />
                     <span className="text-sm font-medium">Pickup and destination must differ</span>
                   </div>
                 ) : farePreview ? (
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-end">
-                      <span className="text-[#A1A1AA] text-sm font-medium">Estimated Fare</span>
-                      <span className="text-3xl font-bold tracking-tight text-[#F3F4F6]">৳{farePreview.total.toFixed(2)}</span>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[#F3F4F6] font-bold text-lg">Estimated fare</span>
+                      <span className="text-[#10B981] font-bold text-xl">৳{(farePreview.total).toFixed(2)}</span>
                     </div>
-                    {farePreview.poolDiscount > 0 && (
-                      <div className="rounded-lg bg-[#131815] border border-[#2C3831] border border-[#4F6BFF]/20 p-2.5 flex items-start gap-2">
-                        <Car className="w-4 h-4 text-[#10B981] mt-0.5 flex-shrink-0" />
-                        <p className="text-xs text-[#10B981] leading-relaxed">
-                          Includes ৳{farePreview.poolDiscount} discount. Pooled with up to {3 - seats} riders going your way.
-                        </p>
+                    
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between text-[#A1A1AA]">
+                        <span>Base fare</span>
+                        <span className="text-[#F3F4F6]">৳{(farePreview.baseFare).toFixed(2)}</span>
                       </div>
-                    )}
+                      <div className="flex justify-between text-[#A1A1AA]">
+                        <span>Distance charge</span>
+                        <span className="text-[#F3F4F6]">৳{(farePreview.distanceCharge).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[#A1A1AA]">
+                        <span>Fare per seat</span>
+                        <span className="text-[#F3F4F6]">৳{(farePreview.farePerSeat || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[#A1A1AA] border-t border-[#2C3831] pt-3">
+                        <span>Final fare</span>
+                        <span className="text-[#F3F4F6]">৳{(farePreview.farePerSeat || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-[#F3F4F6] pt-1 mt-1">
+                        <span>Estimated total (BDT)</span>
+                        <span className="text-[#10B981]">৳{(farePreview.total).toFixed(2)}</span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-xs text-[#A1A1AA] mt-6 leading-relaxed">
+                      Seat fares assume a solo ride — every seat pays 25% less once your ride shares a Tesla with another passenger.
+                    </p>
                   </div>
                 ) : null}
               </div>
@@ -479,7 +485,7 @@ export default function PassengerDashboard() {
                   className="w-full h-14 rounded-xl bg-[#F0FDF4] text-[#022C22] font-semibold text-lg transition-all duration-300 hover:bg-[#DCFCE7] disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {requesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
-                  Confirm Request
+                  Book ride
                 </button>
               </div>
             </div>

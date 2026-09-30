@@ -14,7 +14,7 @@ export async function requestRide(prisma: PrismaClient, passengerId: number, bod
       (payment_method !== 'CASH' && payment_method !== 'TESLA_PAY')) {
     throw new HttpError(400, 'Invalid ride parameters');
   }
-  const fare_amount = calculateFare(pickup_zone, destination_zone);
+  const fare_amount = calculateFare(pickup_zone, destination_zone, seats_requested);
   return prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${passengerId} FOR UPDATE`;
     const passenger = await tx.user.findUnique({ where: { id: passengerId } });

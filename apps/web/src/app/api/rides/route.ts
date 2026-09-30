@@ -12,6 +12,6 @@ export async function POST(req: NextRequest) {
     const result = await requestRide(getPrisma(), user.id, await readJsonBody(req));
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    return apiError(error, 'Unable to update your ride. Please try again.');
+    return apiError(error, 'Could not book your ride. Please try again.');
   }
 }

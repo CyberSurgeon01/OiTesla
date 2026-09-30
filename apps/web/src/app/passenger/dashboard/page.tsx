@@ -70,6 +70,7 @@ export default function PassengerDashboard() {
   const [history, setHistory] = useState<PassengerRide[]>([]);
   const [stats, setStats] = useState<RideStats>({ spentToday: 0, spentThisMonth: 0 });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
 
   const [ratingRide, setRatingRide] = useState<PassengerRide | null>(null);
   const [rating, setRating] = useState(0);
@@ -411,7 +412,7 @@ export default function PassengerDashboard() {
         </div>
         <button
           type="button"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => { setSidebarOpen(false); setDesktopSidebarOpen(false); }}
           aria-label="Close navigation"
           className={`shrink-0 rounded-full border border-[#2C3831] bg-[#131815] p-2 text-[#A1A1AA] transition-colors hover:text-white ${FOCUS_RING}`}
         >
@@ -485,7 +486,7 @@ export default function PassengerDashboard() {
         </aside>
       </div>
 
-      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[320px] flex-col overflow-y-auto overscroll-contain border-r border-[#2C3831] bg-[#0A0D0B] p-6 lg:flex">
+      <aside aria-label="Passenger navigation" className={`fixed left-0 top-0 z-30 hidden h-screen w-[320px] flex-col overflow-y-auto overscroll-contain border-r border-[#2C3831] bg-[#0A0D0B] p-6 ${desktopSidebarOpen ? 'lg:flex' : ''}`}>
         {sidebarContent}
       </aside>
 
@@ -553,16 +554,16 @@ export default function PassengerDashboard() {
         </div>
       )}
 
-      <div className="lg:pl-[320px]">
+      <div className={desktopSidebarOpen ? 'lg:pl-[320px]' : ''}>
         <header className="sticky top-0 z-40 w-full border-b border-[#2C3831] bg-[#0A0D0B]/90 backdrop-blur-xl">
           <div className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                onClick={() => setSidebarOpen(true)}
+                onClick={() => { setSidebarOpen(true); setDesktopSidebarOpen(true); }}
                 aria-label="Open navigation"
                 aria-expanded={sidebarOpen}
-                className={`-ml-2 rounded-full p-2 text-[#A1A1AA] transition-colors hover:bg-[#131815] hover:text-[#F3F4F6] lg:hidden ${FOCUS_RING}`}
+                className={`-ml-2 rounded-full p-2 text-[#A1A1AA] transition-colors hover:bg-[#131815] hover:text-[#F3F4F6] ${desktopSidebarOpen ? 'lg:hidden' : ''} ${FOCUS_RING}`}
               >
                 <Menu className="h-5 w-5" aria-hidden="true" />
               </button>

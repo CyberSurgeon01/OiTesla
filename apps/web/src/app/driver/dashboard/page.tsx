@@ -21,6 +21,7 @@ export default function DriverDashboard() {
   const [stats, setStats] = useState({ gainedToday: 0, gainedThisMonth: 0 });
   const [fullHistory, setFullHistory] = useState<any[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -218,23 +219,14 @@ export default function DriverDashboard() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12 relative">
-
-      {/* Slide-over Sidebar */}
-      <div className={`fixed inset-0 z-50 transition-all duration-300 ${isSidebarOpen ? 'visible' : 'invisible'}`}>
-        <div 
-          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
-          onClick={() => setIsSidebarOpen(false)}
-        />
-        
-        <aside className={`absolute top-0 left-0 w-[320px] max-w-[85vw] h-full bg-[#0A0D0B] border-r border-[#2C3831] flex flex-col p-6 overflow-y-auto transition-transform duration-300 shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+  const sidebarContent = (
+    <>
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
               <p className="text-sm text-[#10B981] capitalize">{user?.role?.toLowerCase()}</p>
             </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 bg-[#131815] rounded-full text-gray-400 hover:text-white transition-colors border border-[#2C3831]">
+            <button type="button" aria-label="Close navigation" onClick={() => { setIsSidebarOpen(false); setDesktopSidebarOpen(false); }} className="p-2 bg-[#131815] rounded-full text-gray-400 hover:text-white transition-colors border border-[#2C3831]">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -274,14 +266,41 @@ export default function DriverDashboard() {
               )}
             </div>
           </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12 relative">
+      <div className={`fixed inset-0 z-50 lg:hidden ${isSidebarOpen ? 'visible' : 'invisible'}`} aria-hidden={!isSidebarOpen}>
+        <div
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setIsSidebarOpen(false)}
+        />
+        <aside aria-label="Driver navigation" className={`absolute top-0 left-0 w-[320px] max-w-[85vw] h-full bg-[#0A0D0B] border-r border-[#2C3831] flex flex-col p-6 overflow-y-auto transition-transform duration-300 shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          {sidebarContent}
         </aside>
       </div>
+
+      <aside aria-label="Driver navigation" className={`fixed left-0 top-0 z-30 hidden h-screen w-[320px] flex-col overflow-y-auto border-r border-[#2C3831] bg-[#0A0D0B] p-6 ${desktopSidebarOpen ? 'lg:flex' : ''}`}>
+        {sidebarContent}
+      </aside>
+
+      <div className={desktopSidebarOpen ? 'lg:pl-[320px]' : ''}>
 
       
       {/* Top Header */}
       <header className="sticky top-0 z-40 w-full bg-[#0A0D0B]/90 backdrop-blur-xl border-b border-[#2C3831]">
         <div className="max-w-screen-xl mx-auto flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="Open navigation"
+              aria-expanded={isSidebarOpen}
+              onClick={() => { setIsSidebarOpen(true); setDesktopSidebarOpen(true); }}
+              className={`-ml-2 rounded-full p-2 text-[#A1A1AA] hover:bg-[#131815] hover:text-white ${desktopSidebarOpen ? 'lg:hidden' : ''}`}
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            </button>
             <div className="w-2.5 h-2.5 rounded-full bg-[#F3F4F6]" />
             <span className="font-bold text-lg tracking-tight">OiTesla Driver</span>
           </div>
@@ -540,7 +559,7 @@ export default function DriverDashboard() {
 
       {/* Sticky Bottom Action Bar for Active Trip */}
       {activeStickyAction && (
-        <div className="fixed bottom-0 left-0 w-full p-4 sm:p-6 bg-gradient-to-t from-[#0A0D0B] via-[#0A0D0B]/90 to-transparent z-40">
+        <div className={`fixed bottom-0 left-0 w-full p-4 sm:p-6 bg-gradient-to-t from-[#0A0D0B] via-[#0A0D0B]/90 to-transparent z-40 ${desktopSidebarOpen ? 'lg:left-[320px] lg:w-[calc(100%-320px)]' : ''}`}>
           <div className="max-w-lg mx-auto">
             <button
               onClick={() => transitionPool(activeStickyAction.poolId, activeStickyAction.nextState)}
@@ -558,6 +577,7 @@ export default function DriverDashboard() {
         </div>
       )}
 
+      </div>
     </div>
   );
 }

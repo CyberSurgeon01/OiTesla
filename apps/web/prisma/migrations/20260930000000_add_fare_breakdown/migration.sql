@@ -1,7 +1,7 @@
 -- AlterTable: snapshot the priced fare breakdown at booking time
 -- fare_amount alone cannot explain why a historical ride cost what it did, and cannot
 -- be re-derived once rates change. Storing the breakdown makes old rides immutable.
-ALTER TABLE "RideRequest" ADD COLUMN "fare_breakdown" JSONB;
+ALTER TABLE "RideRequest" ADD COLUMN IF NOT EXISTS "fare_breakdown" JSONB;
 
 -- Backfill only the fields that are actually known for historical rows: the amount charged
 -- and the seat count. The per-seat and distance components are left NULL on purpose -- the

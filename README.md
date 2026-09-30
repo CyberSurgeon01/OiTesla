@@ -146,8 +146,7 @@ erDiagram
 OiTesla is designed to be deployed instantly on Vercel. 
 - Set `apps/web` as the Root Directory in Vercel settings.
 - Configure all Environment Variables in the Vercel dashboard.
-- Vercel automatically runs `prisma generate && next build`. 
-- **Important**: To run database schema migrations on Vercel, hit the `/api/admin/migrate` endpoint once to apply structural updates (like the rating columns) to your live database safely without dropping data.
+- The Vercel build generates the Prisma client and applies pending Prisma migrations before building the app. No manual migration URL is needed.
 
 ---
 

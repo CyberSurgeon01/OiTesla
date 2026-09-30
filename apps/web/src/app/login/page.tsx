@@ -12,10 +12,10 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { signIn, isLoaded: clerkLoaded } = useSignIn();
+  const { signIn } = useSignIn();
 
   const handleGoogleSignIn = () => {
-    if (!clerkLoaded) return;
+    if (!signIn) return;
     signIn.authenticateWithRedirect({
       strategy: "oauth_google",
       redirectUrl: "/sso-callback",

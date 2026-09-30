@@ -1,32 +1,28 @@
-# 🚗 OiTesla
+# 🚘 OiTesla
 
-**OiTesla** is a premium, real-time ridesharing and pooling platform built for high concurrency. It seamlessly connects passengers with available Tesla drivers, optimizing routes for shared rides while enforcing strict vehicle capacity limits and race-condition safety.
+**OiTesla** is a premium, full-stack ride-sharing application specializing in luxury Tesla EV carpools. It features robust role-based access control, real-time simulated state synchronization, JWT authentication, and a bespoke "Cyber/Neon" user interface.
 
-Designed with a sleek, ultra-minimalist **Monochrome Deep Green & Mint** identity, the application provides a native-feeling experience across web and mobile browsers.
+The application uses a **Broadcast Model** where passengers request rides and drivers view all available local requests, manually accepting passengers into their active pool up to their vehicle's seat capacity.
 
 ---
 
-## ✨ Key Features
+## ✨ Features
 
-### 🎨 Premium Design System
-- **Ultra-Minimalist UI**: Built with custom Tailwind CSS, relying on a strict Deep Green (`#0A0D0B`) and Mint Green (`#10B981`) palette. No bloated component libraries; just raw, performant, pixel-perfect styling.
-- **Custom Steppers & Animations**: Smooth CSS fade-ups, interactive route selection dropdowns, and dynamic visual state trackers.
-- **Dark Mode Native**: A fully immersive dark theme engineered for high contrast and accessibility.
+### Passenger Experience
+- **Dynamic Fare Engine**: Fare preview based on fixed zone matrices and requested seats.
+- **Real-Time State Tracking**: 1-second polling ensures instant UI updates (with elegant radar ping animations and toast notifications) as the driver changes the ride status.
+- **Rating System**: After a ride is completed, passengers can leave a 1-5 star rating and comment.
+- **Trip History**: View all completed and cancelled rides, along with given ratings.
 
-### 👥 Passenger Experience
-- **Dynamic Fare Engine**: Real-time fare previews based on distance algorithms and automatic pooling discounts.
-- **Live Ride Tracking**: A sleek, animated visual stepper (`REQUESTED` → `ACCEPTED` → `DRIVER_ARRIVED` → `STARTED` → `COMPLETED`) tracks the ride lifecycle.
-- **Ride History**: Dedicated views to track past completed and cancelled trips with fare summaries.
+### Driver Experience
+- **Broadcast Request Pool**: View a live list of all unassigned passenger requests in the city.
+- **Manual Acceptance & Capacity Management**: Drivers can accept requests. The system strictly enforces the vehicle's maximum seat capacity.
+- **Active Trip Manager**: Seamlessly advance passengers through the lifecycle (`ACCEPTED` -> `DRIVER_ARRIVED` -> `STARTED` -> `COMPLETED`).
+- **Earnings & Rating Dashboard**: View total earnings, passenger count, and passenger ratings for past pools.
 
-### 🏎️ Driver Experience
-- **Occupancy Tracking**: Persistent top-level dashboard indicator showing real-time Tesla seat availability (e.g., 2/3 Seats Filled).
-- **Pooled Assignment Stacking**: View multiple passengers grouped logically into a single active trip, with individual pickup/drop-off destinations.
-- **Lifecycle Management**: Sticky, distraction-free action bars to transition the entire pool through its lifecycle safely.
-
-### ⚙️ Engineering & Architecture
-- **Real-Time State Sync**: Implements highly optimized short-interval HTTP polling (2.5s) to guarantee zero drift between Passenger and Driver views without the overhead of WebSockets for MVP scale.
-- **Role-Based Auth**: Secure JWT authentication. Each email identifies one account with either the Driver or Passenger role; use separate emails to test both roles.
-- **Idempotent Transactions**: Uses strict pessimistic row-level locking (`SELECT ... FOR UPDATE SKIP LOCKED`) in PostgreSQL to prevent double-booking during extreme concurrency bursts.
+### System & Architecture
+- **Serverless Full-Stack**: Fully unified Next.js 14 App Router application deployed on Vercel.
+- **Concurrency & Race Condition Safety**: Transactions ensure that drivers cannot overbook their vehicle's seat capacity when multiple passengers are accepted simultaneously.
 - **Integer Currency**: All financial data (fares, wallets) are calculated and stored in integers (`poysha`) to eliminate float precision errors.
 
 ---
@@ -35,8 +31,8 @@ Designed with a sleek, ultra-minimalist **Monochrome Deep Green & Mint** identit
 
 ```mermaid
 flowchart LR
-    Browser[Web Browser] -->|HTTP / JSON| NextJS[Next.js 14 App Router]
-    NextJS -->|Next.js API routes and Prisma| Postgres[(PostgreSQL 15)]
+    Browser[Web Browser] -->|HTTP / JSON| NextJS[Next.js 14 Serverless API]
+    NextJS -->|Prisma ORM| Postgres[(PostgreSQL)]
 ```
 
 ### Entity-Relationship Diagram
@@ -69,9 +65,11 @@ erDiagram
         string pickup_zone
         string destination_zone
         int seats_requested
-        enum status "Lifecycle Enum"
+        enum status "REQUESTED | ACCEPTED | DRIVER_ARRIVED | STARTED | COMPLETED | CANCELLED"
         int fare_amount
         enum payment_method "CASH | TESLA_PAY"
+        int rating
+        string rating_comment
     }
 
     USER ||--o{ VEHICLE : "drives"
@@ -83,112 +81,97 @@ erDiagram
 ---
 
 ## 🛠️ Tech Stack
-- **Frontend**: Next.js 14 (App Router), React 18, Tailwind CSS v3, Lucide Icons.
-- **Backend**: Node.js, Express, TypeScript, JWT.
+- **Frontend**: Next.js 14 (App Router), React 18, Tailwind CSS v3, Lucide Icons, Shadcn UI.
+- **Backend**: Next.js API Routes (Serverless), TypeScript, JWT.
 - **Database**: PostgreSQL 15, Prisma ORM.
-- **Testing**: Jest, Supertest.
-- **DevOps**: Docker & Docker Compose (Zero-config environment).
+- **Email**: Brevo HTTP API for OTP verification.
+- **Deployment**: Vercel.
 
 ---
 
-## 🚀 Local Setup & Docker Instructions
+## 🚀 Local Setup
 
-OiTesla is fully containerized for a zero-configuration cold boot.
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/CyberSurgeon01/OiTesla.git
+   cd OiTesla/apps/web
+   ```
 
-1. **Clone the repository and prepare environment variables**:
+2. **Prepare environment variables**:
+   Create a `.env` file based on `.env.example`:
    ```bash
    cp .env.example .env
    ```
-2. **Spin up the cluster**:
+   Fill in your `DATABASE_URL` (PostgreSQL), `JWT_SECRET`, `BREVO_API_KEY`, and `BREVO_SENDER`.
+
+3. **Install dependencies and setup database**:
    ```bash
-   docker compose up --build
+   npm install
+   npx prisma db push
+   npx prisma generate
    ```
 
-*Note: The `api` container is wired to automatically generate the Prisma client, deploy migrations, and run the idempotent seed script (`apps/api/prisma/seed.ts`) before starting the server. Next.js runs on port `3000` and the API runs on `3001`.*
+4. **Seed the database (Optional)**:
+   You can write a custom seed script or manually create users. To manually grant a driver a vehicle, update the database directly.
 
-### Vercel deployment
+5. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
 
-Use `apps/web` as the Vercel project root. Its Next.js API routes connect directly to PostgreSQL, so set a **nonempty `DATABASE_URL`** in the project's environment variables for Production (and Preview if needed). Use the connection string from the existing database provider; the blank value in `apps/web/.env.example` is only a placeholder. Configure `JWT_SECRET`, `BREVO_API_KEY`, and `BREVO_SENDER` there as well.
-
-Redeploy after changing environment variables so the deployment receives the new values. If login returns HTTP 500, inspect Vercel's runtime logs for `/api/auth/login`. `/api/health` checks the database connection and returns HTTP 503 when it is unavailable. Vercel builds reject empty `DATABASE_URL` and `JWT_SECRET` values. Production signup also requires valid `BREVO_API_KEY` and `BREVO_SENDER` values; email delivery failures are reported instead of claiming success.
-
----
-
-## 🧪 Testing
-
-The test suite utilizes Jest and Supertest to rigorously validate pooling concurrency, capacity constraints, fare logic, and state transition matrices.
-
-```bash
-# Execute within the running API container
-docker compose exec api npm run test
-```
-
-Web regression tests run separately with Node.js 22.6 or newer:
-
-```bash
-cd apps/web
-npm test
-```
-
-For database integration tests, use a dedicated local PostgreSQL database named `oitesla_test`. Set `DATABASE_URL` to that database, run `npx prisma migrate deploy`, and start the web app on port 3107 with `BREVO_API_KEY= BREVO_SENDER= JWT_SECRET=local-integration-test-secret npm run dev -- --hostname 127.0.0.1 --port 3107`. Then run `npm run test:integration` with the same `DATABASE_URL`. The test runner refuses remote databases and removes only the accounts it creates. These tests use development verification codes from the local database; they do not send email.
-
-Verified drivers receive an offline Tesla vehicle with the MVP default of three passenger seats. Existing verified drivers without a vehicle receive one at their next login.
+### Vercel Deployment
+OiTesla is designed to be deployed instantly on Vercel. 
+- Set `apps/web` as the Root Directory in Vercel settings.
+- Configure all Environment Variables in the Vercel dashboard.
+- Vercel automatically runs `prisma generate && next build`. 
+- **Important**: To run database schema migrations on Vercel, hit the `/api/admin/migrate` endpoint once to apply structural updates (like the rating columns) to your live database safely without dropping data.
 
 ---
 
 ## 🔐 Demo Credentials
 
-The database automatically seeds the primary cast on boot. All passwords are `hashedpassword123`.
-
-- **Driver**: `jashim@oitesla.com`
-- **Passenger 1**: `nusrat@oitesla.com`
-- **Passenger 2**: `rafiq@oitesla.com`
-- **Passenger 3**: `shirin@oitesla.com`
+To test the application locally without verifying emails, check your terminal console logs—the OTP code is printed locally during signup and login if `BREVO_API_KEY` is absent.
 
 ---
 
 ## 📡 API Overview
 
+**Auth**
 - `POST /api/auth/signup` & `POST /api/auth/login` - Role-based JWT authentication.
-- `POST /api/rides` - (Passenger) Requests a ride, calculating fare and finding/creating a pool.
-- `GET /api/passenger/rides/active` & `/history` - (Passenger) State tracking.
-- `PATCH /api/rides/:id/status` - (Passenger) Cancellation endpoint.
-- `GET /api/driver/pools` & `/history` - (Driver) Retrieves assigned pooling contexts.
-- `PATCH /api/driver/pools/:pool_id/status` - (Driver) Batch advances all ride requests within a pool to the next state (`ACCEPTED` -> `DRIVER_ARRIVED` -> `STARTED` -> `COMPLETED`).
-- `PATCH /api/driver/status` - (Driver) Toggles driver availability (ONLINE/OFFLINE).
+- `POST /api/auth/verify` - OTP verification.
+- `GET /api/auth/me` - Validates JWT and retrieves user profile.
+
+**Passenger**
+- `POST /api/rides` - Requests a ride and adds it to the broadcast pool.
+- `GET /api/passenger/rides/active` - Polls current active ride status.
+- `GET /api/passenger/rides/history` - Retrieves past completed/cancelled rides.
+- `POST /api/passenger/rides/:id/rate` - Submits a 1-5 star rating and comment for a completed ride.
+- `PATCH /api/rides/:id/status` - Cancels an active request.
+
+**Driver**
+- `GET /api/driver/requests` - Polls all unassigned ride requests in the system.
+- `POST /api/driver/requests/:ride_id/accept` - Accepts a ride request, assigning it to the driver's active pool if seat capacity allows.
+- `GET /api/driver/pools` - Retrieves the driver's currently active pool and passengers.
+- `GET /api/driver/history` - Retrieves past pools and aggregated earnings/ratings.
+- `PATCH /api/driver/pools/:pool_id/status` - Batch advances all active rides in the pool to the next state (`ACCEPTED` -> `DRIVER_ARRIVED` -> `STARTED` -> `COMPLETED`).
+- `PATCH /api/driver/status` - Toggles driver online availability.
 
 ---
 
 ## ⚖️ Key Decisions & Trade-Offs
 
-### 1. Passenger/Driver State Sync (Short-Interval Polling)
-To ensure the passenger and driver views reflect the exact same ride state without lag or drift, the MVP utilizes short-interval polling (2.5s) against a single source of truth (the PostgreSQL database). 
-- **Limitation**: Introduces a few seconds of staleness and increased server load compared to a persistent connection.
-- **Why**: Avoids the complexity of introducing WebSockets, pub/sub queues, or separate state machines for an MVP. Polling is sufficient for early scale and adheres to the "don't add complexity without reason" principle.
+### 1. Broadcast Model vs. Auto-Dispatch
+Initially designed with an Auto-Dispatch algorithm, the architecture was migrated to a Broadcast Model.
+- **Why**: Providing drivers with the agency to manually select and accept rides mimics real-world apps (like inDrive) more accurately for the target market. It removes the risk of algorithmic misrouting during edge cases and gives drivers control over their capacity management.
 
-### 2. Tech Stack Choices
-- **Database (PostgreSQL)**: Picked for robust ACID compliance and row-level locking (`FOR UPDATE SKIP LOCKED`), essential for concurrency.
-- **ORM (Prisma)**: Picked for rapid MVP prototyping and strict type-safety.
-- **Styling (Raw Tailwind CSS)**: Migrated away from generic UI libraries to custom Tailwind utility classes to achieve a deeply bespoke, high-performance visual identity.
-- **Hosting (Docker Compose local)**: Picked to ensure environment parity and zero-config booting for developers.
+### 2. Serverless Next.js API Routes over Express
+Migrated the standalone Express backend directly into Next.js App Router API Routes.
+- **Why**: Simplifies the CI/CD pipeline, reduces infrastructure overhead, and allows seamless, zero-config deployment to Vercel's serverless edge network. It removes the need for Docker Compose in production and resolves CORS complexities.
 
-### 3. Business Logic
-- **Simplified Geography**: Built a fixed `COMPATIBILITY_MAP` matrix for zones instead of relying on real-world GIS routing, allowing us to focus entirely on the core capacity algorithms and race-condition safety.
-- **Optimistic Locking vs Pessimistic Locking**: Opted for pessimistic locking (`SELECT ... FOR UPDATE` and `SKIP LOCKED`) when booking rides, as it prevents overlapping reads during extreme concurrency bursts.
-
----
-
-## 📈 Next Improvements
-- **GIS Routing**: Replacing the static zone matrix with Google Maps/Mapbox for live ETA and dynamic overlapping route calculations.
-- **WebSocket / SSE Updates**: Upgrading from 2.5-second HTTP polling to WebSockets for instant, push-based state transitions.
-- **Payment Gateway**: Integrating a real gateway like SSLCommerz instead of the simulated TeslaPay wallet.
-
----
-
-## 🤖 AI Usage
-- **Tools Used**: Antigravity (Google Deepmind AI agent) for end-to-end scaffolding, logic generation, UI redesign, and automated testing.
-- **Suggestion Accepted As-Is**: Adopted the AI's suggestion to use `prisma.$transaction` combined with raw Postgres `SELECT * FROM "Vehicle" FOR UPDATE` row locks to safely enforce vehicle capacity bounds during simultaneous booking requests.
-- **Suggestion Rejected/Changed**: Rejected storing the database validation for `seats_requested > 0` directly in the Prisma `schema.prisma` file because Prisma doesn't natively support dynamic `CHECK` constraints cleanly without `Unsupported()`. Instead, wrote a raw SQL migration specifically to attach the `CHECK` constraint at the database layer.
+### 3. Passenger/Driver State Sync (1s Polling)
+To ensure the passenger and driver views reflect the exact same ride state without lag, the MVP utilizes 1-second interval polling against the database.
+- **Limitation**: Introduces higher database read operations compared to WebSockets.
+- **Why**: Avoids the complexity and cost of maintaining stateful WebSocket connections or third-party Pub/Sub infrastructure (like Pusher) on a Serverless environment. Vercel's edge network and Prisma's connection pooling handle the read throughput sufficiently for the MVP phase.
 
 ---
 *OiTesla — The future of premium shared mobility.*

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const user = getAuthUser(req);
     if (!user || user.role !== 'PASSENGER') throw new HttpError(403, 'Forbidden');
     const result = await requestRide(getPrisma(), user.id, await readJsonBody(req));
-    console.log("[RIDE ASSIGNED] Ride:", result.ride.id, "Pool:", result.pool_id);
+    console.log("[RIDE ASSIGNED] Ride:", result.ride.id);
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     return apiError(error, 'Unable to update your ride. Please try again.');

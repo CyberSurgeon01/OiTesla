@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { readStoredUser } from '@/lib/session';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, User, MapPin, Navigation, Flag, LogOut, ArrowRight, Clock, Car } from 'lucide-react';
+import { Loader2, Menu, X, User, MapPin, Navigation, Flag, LogOut, ArrowRight, Clock, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { readApiResponse } from '@/lib/api-response';
 
@@ -20,6 +20,7 @@ export default function DriverDashboard() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [stats, setStats] = useState({ gainedToday: 0, gainedThisMonth: 0 });
   const [fullHistory, setFullHistory] = useState<any[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -218,56 +219,64 @@ export default function DriverDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 overflow-hidden">
+    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12 relative">
 
-      {/* Sidebar (Desktop) */}
-      <aside className="hidden lg:flex flex-col w-[350px] border-r border-[#2C3831] bg-[#0A0D0B] h-full p-6 overflow-y-auto z-50 shrink-0">
-        <div className="mb-8 mt-4">
-          <div className="w-16 h-16 rounded-full bg-[#131815] border border-[#2C3831] flex items-center justify-center text-[#10B981] mb-4">
-            <User className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
-          <p className="text-sm text-gray-400 capitalize">{user?.role?.toLowerCase()}</p>
-        </div>
+      {/* Slide-over Sidebar */}
+      <div className={`fixed inset-0 z-50 transition-all duration-300 ${isSidebarOpen ? 'visible' : 'invisible'}`}>
+        <div 
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setIsSidebarOpen(false)}
+        />
         
-        <div className="space-y-4 mb-8">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Total Gained</h3>
-          <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4">
-            <div className="text-xs text-gray-400 mb-1">Today</div>
-            <div className="text-2xl font-bold text-white">৳{stats.gainedToday.toFixed(2)}</div>
+        <aside className={`absolute top-0 left-0 w-[320px] max-w-[85vw] h-full bg-[#0A0D0B] border-r border-[#2C3831] flex flex-col p-6 overflow-y-auto transition-transform duration-300 shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
+              <p className="text-sm text-[#10B981] capitalize">{user?.role?.toLowerCase()}</p>
+            </div>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 bg-[#131815] rounded-full text-gray-400 hover:text-white transition-colors border border-[#2C3831]">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4">
-            <div className="text-xs text-gray-400 mb-1">This Month</div>
-            <div className="text-2xl font-bold text-white">৳{stats.gainedThisMonth.toFixed(2)}</div>
+          
+          <div className="space-y-3 mb-8">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Total Gained</h3>
+            <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4 flex justify-between items-center">
+              <span className="text-sm text-gray-400">Today</span>
+              <span className="text-lg font-bold text-white">৳{stats.gainedToday.toFixed(2)}</span>
+            </div>
+            <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4 flex justify-between items-center">
+              <span className="text-sm text-gray-400">This Month</span>
+              <span className="text-lg font-bold text-white">৳{stats.gainedThisMonth.toFixed(2)}</span>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Past Pools</h3>
-          <div className="space-y-3">
-            {fullHistory.length === 0 ? (
-              <p className="text-sm text-gray-500">No pools yet.</p>
-            ) : (
-              fullHistory.map((pool, idx) => {
-                const completedRides = pool.rideRequests.filter((r: any) => r.status === 'COMPLETED');
-                const totalEarned = completedRides.reduce((acc: number, r: any) => acc + r.fare_amount, 0);
-                return (
-                  <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981] transition-colors">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-400">{new Date(pool.createdAt).toLocaleDateString()}</span>
-                      <span className="font-semibold text-[#10B981]">৳{(totalEarned / 100).toFixed(2)}</span>
+          <div className="flex-1">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Past Pools</h3>
+            <div className="space-y-3">
+              {fullHistory.length === 0 ? (
+                <p className="text-sm text-gray-500">No pools yet.</p>
+              ) : (
+                fullHistory.map((pool, idx) => {
+                  const completedRides = pool.rideRequests.filter((r: any) => r.status === 'COMPLETED');
+                  const totalEarned = completedRides.reduce((acc: number, r: any) => acc + r.fare_amount, 0);
+                  return (
+                    <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981]/50 transition-colors">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-400">{new Date(pool.createdAt).toLocaleDateString()}</span>
+                        <span className="font-semibold text-[#10B981]">৳{(totalEarned / 100).toFixed(2)}</span>
+                      </div>
+                      <div className="text-sm font-medium text-white">{completedRides.length} ride{completedRides.length !== 1 ? 's' : ''}</div>
+                      <div className="text-xs text-gray-500 capitalize">{pool.status.toLowerCase()}</div>
                     </div>
-                    <div className="text-sm font-medium text-white">{completedRides.length} ride{completedRides.length !== 1 ? 's' : ''}</div>
-                    <div className="text-xs text-gray-500 capitalize">{pool.status.toLowerCase()}</div>
-                  </div>
-                )
-              })
-            )}
+                  )
+                })
+              )}
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      </div>
 
-<div className="flex-1 relative overflow-y-auto pb-32 sm:pb-12 w-full">
       
       {/* Top Header */}
       <header className="sticky top-0 z-40 w-full bg-[#0A0D0B]/90 backdrop-blur-xl border-b border-[#2C3831]">
@@ -549,7 +558,6 @@ export default function DriverDashboard() {
         </div>
       )}
 
-    </div>
     </div>
   );
 }

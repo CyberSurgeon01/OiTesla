@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Loader2, Minus, Plus, Car, AlertCircle, ChevronDown, Check, 
-  Search, Wallet, Clock, LogOut, ArrowRight, X, User, Navigation, ArrowRightLeft
+  Search, Wallet, Clock, LogOut, ArrowRight, X, Menu, User, Navigation, ArrowRightLeft
 } from 'lucide-react';
 
 import { ZONES } from '@/lib/pooling/geography';
@@ -86,6 +86,7 @@ export default function PassengerDashboard() {
   const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState({ spentToday: 0, spentThisMonth: 0 });
   const [fullHistory, setFullHistory] = useState<any[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeRide, setActiveRide] = useState<any>(null);
   const previousStatusRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -300,52 +301,62 @@ export default function PassengerDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 overflow-hidden">
+    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12 relative">
 
-      {/* Sidebar (Desktop) */}
-      <aside className="hidden lg:flex flex-col w-[350px] border-r border-[#2C3831] bg-[#0A0D0B] h-full p-6 overflow-y-auto z-50 shrink-0">
-        <div className="mb-8 mt-4">
-          <div className="w-16 h-16 rounded-full bg-[#131815] border border-[#2C3831] flex items-center justify-center text-[#10B981] mb-4">
-            <User className="w-8 h-8" />
-          </div>
-          <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
-          <p className="text-sm text-gray-400 capitalize">{user?.role?.toLowerCase()}</p>
-        </div>
+      {/* Slide-over Sidebar */}
+      <div className={`fixed inset-0 z-50 transition-all duration-300 ${isSidebarOpen ? 'visible' : 'invisible'}`}>
+        {/* Backdrop */}
+        <div 
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setIsSidebarOpen(false)}
+        />
         
-        <div className="space-y-4 mb-8">
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Total Spent</h3>
-          <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4">
-            <div className="text-xs text-gray-400 mb-1">Today</div>
-            <div className="text-2xl font-bold text-white">৳{stats.spentToday.toFixed(2)}</div>
+        {/* Drawer */}
+        <aside className={`absolute top-0 left-0 w-[320px] max-w-[85vw] h-full bg-[#0A0D0B] border-r border-[#2C3831] flex flex-col p-6 overflow-y-auto transition-transform duration-300 shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
+              <p className="text-sm text-[#10B981] capitalize">{user?.role?.toLowerCase()}</p>
+            </div>
+            <button onClick={() => setIsSidebarOpen(false)} className="p-2 bg-[#131815] rounded-full text-gray-400 hover:text-white transition-colors border border-[#2C3831]">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4">
-            <div className="text-xs text-gray-400 mb-1">This Month</div>
-            <div className="text-2xl font-bold text-white">৳{stats.spentThisMonth.toFixed(2)}</div>
+          
+          <div className="space-y-3 mb-8">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Total Spent</h3>
+            <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4 flex justify-between items-center">
+              <span className="text-sm text-gray-400">Today</span>
+              <span className="text-lg font-bold text-white">৳{stats.spentToday.toFixed(2)}</span>
+            </div>
+            <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4 flex justify-between items-center">
+              <span className="text-sm text-gray-400">This Month</span>
+              <span className="text-lg font-bold text-white">৳{stats.spentThisMonth.toFixed(2)}</span>
+            </div>
           </div>
-        </div>
 
-        <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Ride History</h3>
-          <div className="space-y-3">
-            {fullHistory.length === 0 ? (
-              <p className="text-sm text-gray-500">No rides yet.</p>
-            ) : (
-              fullHistory.map((ride, idx) => (
-                <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981] transition-colors">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-400">{new Date(ride.requested_at).toLocaleDateString()}</span>
-                    <span className="font-semibold text-[#10B981]">৳{(ride.fare_amount / 100).toFixed(2)}</span>
+          <div className="flex-1">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Ride History</h3>
+            <div className="space-y-3">
+              {fullHistory.length === 0 ? (
+                <p className="text-sm text-gray-500">No rides yet.</p>
+              ) : (
+                fullHistory.map((ride, idx) => (
+                  <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981]/50 transition-colors">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-400">{new Date(ride.requested_at).toLocaleDateString()}</span>
+                      <span className="font-semibold text-[#10B981]">৳{(ride.fare_amount / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="text-sm font-medium text-white truncate">{ride.pickup_zone} → {ride.destination_zone}</div>
+                    <div className="text-xs text-gray-500 capitalize">{ride.status.toLowerCase().replace('_', ' ')}</div>
                   </div>
-                  <div className="text-sm font-medium text-white truncate">{ride.pickup_zone} → {ride.destination_zone}</div>
-                  <div className="text-xs text-gray-500 capitalize">{ride.status.toLowerCase().replace('_', ' ')}</div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      </div>
 
-<div className="flex-1 relative overflow-y-auto pb-32 sm:pb-12 w-full">
       
       {/* Rating Popup */}
       {completedRideToRate && (
@@ -648,7 +659,6 @@ export default function PassengerDashboard() {
           </div>
         )}
       </main>
-    </div>
     </div>
   );
 }

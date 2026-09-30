@@ -1,4 +1,4 @@
-# 🚘 OiTesla
+# OiTesla
 
 **OiTesla** is a premium, full-stack ride-sharing application specializing in luxury Tesla EV carpools. It features robust role-based access control, real-time simulated state synchronization, JWT authentication, and a bespoke "Cyber/Neon" user interface.
 
@@ -6,7 +6,7 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 
 ---
 
-## ✨ Features
+## Features
 
 ### Passenger Experience
 - **Dynamic Fare Engine**: Fare preview based on fixed zone matrices and requested seats.
@@ -27,7 +27,7 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 flowchart LR
@@ -80,7 +80,7 @@ erDiagram
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 - **Frontend**: Next.js 14 (App Router), React 18, Tailwind CSS v3, Lucide Icons, Shadcn UI.
 - **Backend**: Next.js API Routes (Serverless), TypeScript, JWT.
 - **Database**: PostgreSQL 15, Prisma ORM.
@@ -89,7 +89,7 @@ erDiagram
 
 ---
 
-## 🚀 Local Setup
+## Local Setup
 
 1. **Clone the repository**:
    ```bash
@@ -128,13 +128,13 @@ OiTesla is designed to be deployed instantly on Vercel.
 
 ---
 
-## 🔐 Demo Credentials
+## Demo Credentials
 
 To test the application locally without verifying emails, check your terminal console logs—the OTP code is printed locally during signup and login if `BREVO_API_KEY` is absent.
 
 ---
 
-## 📡 API Overview
+## API Overview
 
 **Auth**
 - `POST /api/auth/signup` & `POST /api/auth/login` - Role-based JWT authentication.
@@ -158,7 +158,7 @@ To test the application locally without verifying emails, check your terminal co
 
 ---
 
-## ⚖️ Key Decisions & Trade-Offs
+## Key Decisions & Trade-Offs
 
 ### 1. Broadcast Model vs. Auto-Dispatch
 Initially designed with an Auto-Dispatch algorithm, the architecture was migrated to a Broadcast Model.

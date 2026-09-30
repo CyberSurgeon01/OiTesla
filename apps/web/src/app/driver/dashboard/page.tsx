@@ -10,6 +10,7 @@ import { readApiResponse } from '@/lib/api-response';
 import { RideProgress } from '@/components/ride-progress';
 import { RatingAverage, RatingStars } from '@/components/rating-stars';
 import { RatingDialog } from '@/components/rating-dialog';
+import { LogoutConfirmDialog } from '@/components/logout-confirm-dialog';
 import { formatDhakaDate } from '@/lib/datetime';
 import { averageRating } from '@/lib/rating';
 import type { DriverPool, DriverRide } from '@/lib/ride-status';
@@ -40,6 +41,7 @@ export default function DriverDashboard() {
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [ratingRide, setRatingRide] = useState<DriverRide | null>(null);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   
   const router = useRouter();
@@ -190,6 +192,8 @@ export default function DriverDashboard() {
     localStorage.removeItem('user');
     router.push('/login');
   };
+
+  const closeLogoutConfirm = useCallback(() => setShowLogoutConfirm(false), []);
 
   const submitRating = async (rating: number, comment: string) => {
     if (!ratingRide || rating === 0 || submittingRating) return;
@@ -375,8 +379,14 @@ export default function DriverDashboard() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-[#A1A1AA] hidden sm:block">{user.name}</span>
-            <button onClick={logout} className="p-2 rounded-full hover:bg-[#131815] transition-colors text-[#A1A1AA] hover:text-[#F3F4F6]">
-              <LogOut className="w-4 h-4" />
+            <button
+              type="button"
+              onClick={() => setShowLogoutConfirm(true)}
+              title="Log out"
+              aria-label="Log out"
+              className="p-2 rounded-full hover:bg-[#131815] transition-colors text-[#A1A1AA] hover:text-[#F3F4F6]"
+            >
+              <LogOut className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -643,6 +653,13 @@ export default function DriverDashboard() {
           submitting={submittingRating}
           onSubmit={submitRating}
           onClose={() => setRatingRide(null)}
+        />
+      )}
+
+      {showLogoutConfirm && (
+        <LogoutConfirmDialog
+          onCancel={closeLogoutConfirm}
+          onConfirm={logout}
         />
       )}
 

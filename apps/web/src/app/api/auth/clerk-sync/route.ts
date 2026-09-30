@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import prisma from '@/lib/prisma';
+import { getPrisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '@/lib/server-config';
 import bcrypt from 'bcryptjs';
@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const { role } = body;
+
+    const prisma = getPrisma();
 
     // Find in our DB
     let user = await prisma.user.findUnique({ where: { email } });

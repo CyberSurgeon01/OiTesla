@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSignIn } from '@clerk/nextjs';
+import { useClerk } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { readApiResponse } from '@/lib/api-response';
@@ -19,17 +19,16 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   
   const router = useRouter();
-  const { signIn } = useSignIn();
+  const clerk = useClerk();
 
   const handleGoogleSignIn = async () => {
     try {
-      if (!signIn) {
-        console.error("Clerk signIn is not loaded");
+      if (!clerk.loaded) {
+        console.error("Clerk is not loaded");
         return;
       }
       console.log("Triggering Google OAuth...");
-      // @ts-ignore
-      await signIn.authenticateWithRedirect({
+      await clerk.client.signIn.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/onboarding",

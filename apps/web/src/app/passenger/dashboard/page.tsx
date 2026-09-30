@@ -537,7 +537,11 @@ export default function PassengerDashboard() {
                             )}
                             {isPast && !isActive && <div className="w-2 h-2 rounded-full bg-white" />}
                           </div>
-                          <span className={`absolute top-5 mt-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest w-24 left-1/2 -translate-x-1/2 text-center transition-all duration-300 ${
+                          <span className={`absolute top-5 mt-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest w-24 transition-all duration-300 ${
+                            index === 0 ? 'left-[-10px] text-left' : 
+                            index === STEPS.length - 1 ? 'right-[-10px] text-right' : 
+                            'left-1/2 -translate-x-1/2 text-center'
+                          } ${
                             isActive ? 'text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)] scale-105' : 
                             isPast ? 'text-[#F3F4F6]' : 'text-[#3F3F46]'
                           }`}>

@@ -8,7 +8,8 @@ import bcrypt from 'bcryptjs';
 export async function POST(req: NextRequest) {
   try {
     const authData = auth(); // Clerk's auth
-    const userId = typeof authData.then === 'function' ? (await authData).userId : authData.userId;
+    // @ts-ignore
+    const userId = authData.userId || (await authData).userId;
     
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

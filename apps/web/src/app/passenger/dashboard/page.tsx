@@ -84,6 +84,8 @@ function SearchableRouteSelect({ value, onChange, options, placeholder }: { valu
 
 export default function PassengerDashboard() {
   const [user, setUser] = useState<any>(null);
+  const [stats, setStats] = useState({ spentToday: 0, spentThisMonth: 0 });
+  const [fullHistory, setFullHistory] = useState<any[]>([]);
   const [activeRide, setActiveRide] = useState<any>(null);
   const previousStatusRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -204,6 +206,12 @@ export default function PassengerDashboard() {
     }
     
     setUser(parsedUser);
+        
+    fetch('/api/passenger/stats', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.json()).then(data => { if(!data.error) setStats(data); });
+      
+    fetch('/api/passenger/rides/history', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.json()).then(data => { if(Array.isArray(data)) setFullHistory(data); });
     fetchActiveRide(token);
     checkRecentCompletedRide(token);
 
@@ -292,7 +300,52 @@ export default function PassengerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12">
+    <div className="flex h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 overflow-hidden">
+
+      {/* Sidebar (Desktop) */}
+      <aside className="hidden lg:flex flex-col w-[350px] border-r border-[#2C3831] bg-[#0A0D0B] h-full p-6 overflow-y-auto z-50 shrink-0">
+        <div className="mb-8 mt-4">
+          <div className="w-16 h-16 rounded-full bg-[#131815] border border-[#2C3831] flex items-center justify-center text-[#10B981] mb-4">
+            <User className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
+          <p className="text-sm text-gray-400 capitalize">{user?.role?.toLowerCase()}</p>
+        </div>
+        
+        <div className="space-y-4 mb-8">
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Total Spent</h3>
+          <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4">
+            <div className="text-xs text-gray-400 mb-1">Today</div>
+            <div className="text-2xl font-bold text-white">৳{stats.spentToday.toFixed(2)}</div>
+          </div>
+          <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4">
+            <div className="text-xs text-gray-400 mb-1">This Month</div>
+            <div className="text-2xl font-bold text-white">৳{stats.spentThisMonth.toFixed(2)}</div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Ride History</h3>
+          <div className="space-y-3">
+            {fullHistory.length === 0 ? (
+              <p className="text-sm text-gray-500">No rides yet.</p>
+            ) : (
+              fullHistory.map((ride, idx) => (
+                <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981] transition-colors">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-400">{new Date(ride.requested_at).toLocaleDateString()}</span>
+                    <span className="font-semibold text-[#10B981]">৳{(ride.fare_amount / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="text-sm font-medium text-white truncate">{ride.pickup_zone} → {ride.destination_zone}</div>
+                  <div className="text-xs text-gray-500 capitalize">{ride.status.toLowerCase().replace('_', ' ')}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </aside>
+
+<div className="flex-1 relative overflow-y-auto pb-32 sm:pb-12 w-full">
       
       {/* Rating Popup */}
       {completedRideToRate && (
@@ -595,6 +648,7 @@ export default function PassengerDashboard() {
           </div>
         )}
       </main>
+    </div>
     </div>
   );
 }

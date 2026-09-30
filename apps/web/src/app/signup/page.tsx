@@ -21,14 +21,22 @@ export default function Signup() {
   const router = useRouter();
   const { signIn } = useSignIn();
 
-  const handleGoogleSignIn = () => {
-    if (!signIn) return;
-    // @ts-ignore
-    signIn.authenticateWithRedirect({
-      strategy: "oauth_google",
-      redirectUrl: "/sso-callback",
-      redirectUrlComplete: "/sso-callback",
-    });
+  const handleGoogleSignIn = async () => {
+    try {
+      if (!signIn) {
+        console.error("Clerk signIn is not loaded");
+        return;
+      }
+      console.log("Triggering Google OAuth...");
+      // @ts-ignore
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/onboarding",
+      });
+    } catch (err) {
+      console.error("OAuth error:", err);
+    }
   };
 
   const { toast } = useToast();

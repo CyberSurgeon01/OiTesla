@@ -25,6 +25,7 @@ export default function Login() {
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/onboarding",
+        forceRedirectUrl: "/onboarding",
       });
     } catch (err) {
       console.error("OAuth error:", err);

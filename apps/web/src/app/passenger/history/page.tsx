@@ -39,7 +39,7 @@ export default function PassengerHistory() {
           router.replace('/login');
           return;
         }
-        const data = await readApiResponse(res);
+        const data = await readApiResponse(res, { allowArray: res.ok });
         if (!res.ok) throw new Error(data.error || 'Could not load your ride history.');
         if (!cancelled) setHistory(Array.isArray(data) ? (data as PassengerRide[]) : []);
       } catch (cause) {

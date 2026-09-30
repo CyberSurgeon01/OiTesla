@@ -40,3 +40,10 @@ test('rejects a response redirected to a hosting authentication gate', async () 
   Object.defineProperty(response, 'redirected', { value: true });
   await assert.rejects(readApiResponse(response), /service is temporarily unavailable/);
 });
+
+test('accepts ride history arrays and an empty active ride only when requested', async () => {
+  const rides = [{ id: 1, status: 'COMPLETED' }];
+  assert.deepEqual(await readApiResponse(Response.json(rides), { allowArray: true }), rides);
+  assert.deepEqual(await readApiResponse(Response.json([]), { allowArray: true }), []);
+  assert.equal(await readApiResponse(Response.json(null), { allowNull: true }), null);
+});

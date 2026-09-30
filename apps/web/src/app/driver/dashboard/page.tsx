@@ -7,8 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Menu, X, User, MapPin, Navigation, Flag, LogOut, ArrowRight, Clock, Car } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { readApiResponse } from '@/lib/api-response';
-
-const STEPS = ['REQUESTED', 'MATCHED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'];
+import { RideProgress } from '@/components/ride-progress';
 
 export default function DriverDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -469,51 +468,7 @@ export default function DriverDashboard() {
                           </div>
                         </div>
 
-                        {/* Advanced Stepper */}
-                        <div className="mt-2 mb-16 px-10 sm:px-12">
-                          <div className="relative h-5 flex items-center">
-                            <div className="absolute left-0 right-0 h-0.5 bg-[#1E2621]" />
-                            <div 
-                              className="absolute left-0 h-0.5 bg-[#10B981] transition-all duration-700 ease-in-out" 
-                              style={{ width: `${(Math.max(0, STEPS.indexOf(ride.status)) / (STEPS.length - 1)) * 100}%` }}
-                            />
-                            
-                            <div className="absolute left-0 right-0 flex justify-between">
-                              {STEPS.map((step, index) => {
-                                const currentStepIndex = Math.max(0, STEPS.indexOf(ride.status));
-                                const isActive = index === currentStepIndex;
-                                const isPast = index <= currentStepIndex;
-                                
-                                return (
-                                  <div key={step} className="relative flex justify-center w-0">
-                                    <div className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${
-                                      isPast && !isActive ? 'bg-[#10B981]' : 
-                                      isActive ? 'bg-[#10B981] shadow-[0_0_12px_rgba(16,185,129,0.8)]' : 'bg-[#131815] border border-[#2C3831]'
-                                    }`}>
-                                      {isActive && (
-                                        <>
-                                          <div className="absolute inset-0 rounded-full bg-[#10B981] animate-ping opacity-50" />
-                                          <div className="relative w-2 h-2 rounded-full bg-[#0A0D0B] z-20" />
-                                        </>
-                                      )}
-                                      {isPast && !isActive && <div className="w-2 h-2 rounded-full bg-white" />}
-                                    </div>
-                                    <span className={`absolute top-5 mt-2 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest w-24 transition-all duration-300 ${
-                                      index === 0 ? 'left-[-10px] text-left' : 
-                                      index === STEPS.length - 1 ? 'right-[-10px] text-right' : 
-                                      'left-1/2 -translate-x-1/2 text-center'
-                                    } ${
-                                      isActive ? 'text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)] scale-105' : 
-                                      isPast ? 'text-[#F3F4F6]' : 'text-[#3F3F46]'
-                                    }`}>
-                                      {step.replace('_', ' ')}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
+                        <RideProgress status={ride.status} className="my-6" />
 
                         <div className="flex items-center gap-3">
                           <div className="flex flex-col items-center gap-1">

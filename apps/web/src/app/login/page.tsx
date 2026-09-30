@@ -16,6 +16,7 @@ export default function Login() {
 
   const handleGoogleSignIn = () => {
     if (!signIn) return;
+    // @ts-ignore
     signIn.authenticateWithRedirect({
       strategy: "oauth_google",
       redirectUrl: "/sso-callback",

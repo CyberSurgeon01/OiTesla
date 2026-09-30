@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSignIn } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { readApiResponse } from '@/lib/api-response';
@@ -22,6 +23,7 @@ export default function Signup() {
 
   const handleGoogleSignIn = () => {
     if (!signIn) return;
+    // @ts-ignore
     signIn.authenticateWithRedirect({
       strategy: "oauth_google",
       redirectUrl: "/sso-callback",

@@ -401,7 +401,7 @@ export default function PassengerDashboard() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-[#A1A1AA] mt-3 ml-1">A Tesla has 3 seats — book for you and your group.</p>
+                <p className="text-xs text-[#A1A1AA] mt-3 ml-1">Select up to 3 seats for yourself and your companions.</p>
               </div>
 
               {/* Fare Preview Box */}
@@ -447,7 +447,7 @@ export default function PassengerDashboard() {
                     </div>
                     
                     <p className="text-xs text-[#A1A1AA] mt-6 leading-relaxed">
-                      Seat fares assume a solo ride — every seat pays 25% less once your ride shares a Tesla with another passenger.
+                      Fares displayed are per seat. Enjoy a premium shared ride experience while keeping your travel costs low.
                     </p>
                   </div>
                 ) : null}

@@ -219,14 +219,23 @@ export default function DriverDashboard() {
     }
   }
 
+  const closeSidebar = () => {
+    if (window.matchMedia('(min-width: 1024px)').matches) setDesktopSidebarOpen(false);
+    else setIsSidebarOpen(false);
+  };
+  const openSidebar = () => {
+    if (window.matchMedia('(min-width: 1024px)').matches) setDesktopSidebarOpen(true);
+    else setIsSidebarOpen(true);
+  };
+
   const sidebarContent = (
     <>
           <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
+            <div className="min-w-0">
+              <h2 className="truncate text-2xl font-bold text-white">{user?.name}</h2>
               <p className="text-sm text-[#10B981] capitalize">{user?.role?.toLowerCase()}</p>
             </div>
-            <button type="button" aria-label="Close navigation" onClick={() => { setIsSidebarOpen(false); setDesktopSidebarOpen(false); }} className="p-2 bg-[#131815] rounded-full text-gray-400 hover:text-white transition-colors border border-[#2C3831]">
+            <button type="button" aria-label="Close navigation" onClick={closeSidebar} className="p-2 bg-[#131815] rounded-full text-gray-400 hover:text-white transition-colors border border-[#2C3831]">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -243,7 +252,7 @@ export default function DriverDashboard() {
             </div>
           </div>
 
-          <div className="flex-1">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Past Pools</h3>
             <div className="space-y-3">
               {fullHistory.length === 0 ? (
@@ -276,12 +285,12 @@ export default function DriverDashboard() {
           className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
           onClick={() => setIsSidebarOpen(false)}
         />
-        <aside aria-label="Driver navigation" className={`absolute top-0 left-0 w-[320px] max-w-[85vw] h-full bg-[#0A0D0B] border-r border-[#2C3831] flex flex-col p-6 overflow-y-auto transition-transform duration-300 shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside aria-label="Driver navigation" className={`absolute top-0 left-0 w-[320px] max-w-[85vw] h-full bg-[#0A0D0B] border-r border-[#2C3831] flex flex-col p-6 overflow-hidden transition-transform duration-300 shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           {sidebarContent}
         </aside>
       </div>
 
-      <aside aria-label="Driver navigation" className={`fixed left-0 top-0 z-30 hidden h-screen w-[320px] flex-col overflow-y-auto border-r border-[#2C3831] bg-[#0A0D0B] p-6 ${desktopSidebarOpen ? 'lg:flex' : ''}`}>
+      <aside aria-label="Driver navigation" className={`fixed left-0 top-0 z-30 hidden h-screen w-[320px] flex-col overflow-hidden border-r border-[#2C3831] bg-[#0A0D0B] p-6 ${desktopSidebarOpen ? 'lg:flex' : ''}`}>
         {sidebarContent}
       </aside>
 
@@ -296,7 +305,7 @@ export default function DriverDashboard() {
               type="button"
               aria-label="Open navigation"
               aria-expanded={isSidebarOpen}
-              onClick={() => { setIsSidebarOpen(true); setDesktopSidebarOpen(true); }}
+              onClick={openSidebar}
               className={`-ml-2 rounded-full p-2 text-[#A1A1AA] hover:bg-[#131815] hover:text-white ${desktopSidebarOpen ? 'lg:hidden' : ''}`}
             >
               <Menu className="h-5 w-5" aria-hidden="true" />

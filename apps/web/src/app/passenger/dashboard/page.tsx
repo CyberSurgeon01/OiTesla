@@ -20,7 +20,6 @@ import { ZoneSelect } from '@/components/passenger/zone-select';
 
 const STEPS = ['REQUESTED', 'ACCEPTED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'] as const;
 const BOOKING_STORAGE_KEY = 'oitesla:passenger:booking';
-const SIDEBAR_RIDE_LIMIT = 3;
 const RECENT_RIDE_LIMIT = 3;
 const ACTIVE_RIDE_POLL_MS = 2000;
 const FARE_DEBOUNCE_MS = 250;
@@ -387,12 +386,20 @@ export default function PassengerDashboard() {
 
   const name = displayName(user?.name);
   const recentRides = useMemo(() => history.slice(0, RECENT_RIDE_LIMIT), [history]);
-  const sidebarRides = useMemo(() => history.slice(0, SIDEBAR_RIDE_LIMIT), [history]);
   const showBooking = !activeRide && !activeLoading;
   const canCancel = Boolean(
     activeRide && ['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED'].includes(activeRide.status),
   );
   const stepIndex = activeRide ? Math.max(0, STEPS.indexOf(activeRide.status as typeof STEPS[number])) : 0;
+
+  const closeSidebar = () => {
+    if (window.matchMedia('(min-width: 1024px)').matches) setDesktopSidebarOpen(false);
+    else setSidebarOpen(false);
+  };
+  const openSidebar = () => {
+    if (window.matchMedia('(min-width: 1024px)').matches) setDesktopSidebarOpen(true);
+    else setSidebarOpen(true);
+  };
 
   if (!ready || activeLoading) {
     return (
@@ -412,7 +419,7 @@ export default function PassengerDashboard() {
         </div>
         <button
           type="button"
-          onClick={() => { setSidebarOpen(false); setDesktopSidebarOpen(false); }}
+          onClick={closeSidebar}
           aria-label="Close navigation"
           className={`shrink-0 rounded-full border border-[#2C3831] bg-[#131815] p-2 text-[#A1A1AA] transition-colors hover:text-white ${FOCUS_RING}`}
         >
@@ -436,17 +443,17 @@ export default function PassengerDashboard() {
         </div>
       </section>
 
-      <section aria-labelledby="sidebar-history-heading" className="min-h-0 flex-1">
+      <section aria-labelledby="sidebar-history-heading" className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
         <h2 id="sidebar-history-heading" className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#8B93A0]">
-          Recent rides
+          Ride history
         </h2>
-        {sidebarRides.length === 0 ? (
+        {history.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-[#3F4A44] p-5 text-center text-sm text-[#8B93A0]">
             No rides yet. Your bookings will appear here.
           </p>
         ) : (
           <ul className="space-y-3">
-            {sidebarRides.map((ride) => (
+            {history.map((ride) => (
               <li key={ride.id}><RideRow ride={ride} compact /></li>
             ))}
           </ul>
@@ -456,7 +463,7 @@ export default function PassengerDashboard() {
           onClick={() => setSidebarOpen(false)}
           className={`mt-4 inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-[#F3F4F6] transition-colors hover:text-[#10B981] ${FOCUS_RING}`}
         >
-          View all rides
+          Open history page
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </section>
@@ -480,13 +487,13 @@ export default function PassengerDashboard() {
         />
         <aside
           aria-label="Passenger navigation"
-          className={`absolute left-0 top-0 flex h-full w-[320px] max-w-[85vw] flex-col overflow-y-auto overscroll-contain border-r border-[#2C3831] bg-[#0A0D0B] p-6 shadow-2xl transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          className={`absolute left-0 top-0 flex h-full w-[320px] max-w-[85vw] flex-col overflow-hidden border-r border-[#2C3831] bg-[#0A0D0B] p-6 shadow-2xl transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
           {sidebarContent}
         </aside>
       </div>
 
-      <aside aria-label="Passenger navigation" className={`fixed left-0 top-0 z-30 hidden h-screen w-[320px] flex-col overflow-y-auto overscroll-contain border-r border-[#2C3831] bg-[#0A0D0B] p-6 ${desktopSidebarOpen ? 'lg:flex' : ''}`}>
+      <aside aria-label="Passenger navigation" className={`fixed left-0 top-0 z-30 hidden h-screen w-[320px] flex-col overflow-hidden border-r border-[#2C3831] bg-[#0A0D0B] p-6 ${desktopSidebarOpen ? 'lg:flex' : ''}`}>
         {sidebarContent}
       </aside>
 
@@ -560,7 +567,7 @@ export default function PassengerDashboard() {
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
-                onClick={() => { setSidebarOpen(true); setDesktopSidebarOpen(true); }}
+                onClick={openSidebar}
                 aria-label="Open navigation"
                 aria-expanded={sidebarOpen}
                 className={`-ml-2 rounded-full p-2 text-[#A1A1AA] transition-colors hover:bg-[#131815] hover:text-[#F3F4F6] ${desktopSidebarOpen ? 'lg:hidden' : ''} ${FOCUS_RING}`}

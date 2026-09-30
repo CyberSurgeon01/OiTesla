@@ -1,6 +1,12 @@
 node_modules/
+
+# Secrets. The previous patterns were `.env` and `.env.*.local`, which do not match
+# `.env.local` -- that file was tracked and published its CLERK_SECRET_KEY. These three
+# cover every local variant: .env, .env.local, .env.production.local.
 .env
-.env.*.local
+.env.local
+.env*.local
+!.env.example
 .DS_Store
 
 # Build artifacts

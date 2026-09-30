@@ -58,6 +58,10 @@ export default function PassengerDashboard() {
   const [fare, setFare] = useState<FareQuote | null>(null);
   const [fareLoading, setFareLoading] = useState(false);
   const [fareError, setFareError] = useState<string | null>(null);
+  const [quotedSelection, setQuotedSelection] = useState('');
+  const selection = JSON.stringify([pickup, destination, seats]);
+  const fareIsCurrent = quotedSelection === selection;
+  const fareController = useRef<AbortController | null>(null);
 
   const [requesting, setRequesting] = useState(false);
   const bookingInFlight = useRef(false);
@@ -80,6 +84,7 @@ export default function PassengerDashboard() {
   const previousStatus = useRef<string | null>(null);
   const activeRideRef = useRef<PassengerRide | null>(null);
   const pollInFlight = useRef(false);
+  const rideVersion = useRef(0);
   const tokenRef = useRef<string | null>(null);
 
   const sameZone = Boolean(pickup && destination && pickup === destination);
@@ -175,21 +180,28 @@ export default function PassengerDashboard() {
   const refreshFare = useCallback(async () => {
     const token = tokenRef.current;
     if (!token) return;
+    fareController.current?.abort();
+    const controller = new AbortController();
+    fareController.current = controller;
     setFareLoading(true);
     setFareError(null);
     try {
       const query = new URLSearchParams({ pickup, destination, seats: String(seats) });
       const res = await fetch(`/api/rides/estimate?${query}`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
       const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.error || 'Unable to calculate the fare.');
+      if (controller.signal.aborted) return;
       setFare(data.fare as FareQuote);
+      setQuotedSelection(JSON.stringify([pickup, destination, seats]));
     } catch (error) {
+      if (controller.signal.aborted) return;
       setFare(null);
       setFareError((error as Error).message || 'Unable to calculate the fare.');
     } finally {
-      setFareLoading(false);
+      if (!controller.signal.aborted) setFareLoading(false);
     }
   }, [pickup, destination, seats]);
 
@@ -201,8 +213,13 @@ export default function PassengerDashboard() {
       setFareLoading(false);
       return;
     }
+    setFareError(null);
+    setFareLoading(true);
     const timer = setTimeout(() => { refreshFare(); }, FARE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      fareController.current?.abort();
+    };
   }, [ready, zonesLoading, pickup, destination, seats, refreshFare]);
 
   /* -------------------------------------------------------------- ride data */
@@ -268,19 +285,21 @@ export default function PassengerDashboard() {
     const token = tokenRef.current;
     if (!token || pollInFlight.current) return;
     pollInFlight.current = true;
+    const version = rideVersion.current;
     try {
       const res = await fetch('/api/passenger/rides/active', { headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 401 || res.status === 403) { signInExpired(); return; }
       if (!res.ok) return;
 
       const data = await readApiResponse(res, { allowNull: true });
+      if (version !== rideVersion.current) return;
       const ride = (data ?? null) as PassengerRide | null;
       const status = ride?.status ?? null;
       const previousRide = activeRideRef.current;
 
       if (!ride && previousRide) {
         const latestHistory = await loadHistory();
-        if (!latestHistory) return; // Keep the current ride visible and retry the next poll.
+        if (!latestHistory || version !== rideVersion.current) return; // Retry without overwriting a newer action.
         const finishedRide = latestHistory.find((item) => item.id === previousRide.id);
         if (finishedRide?.status === 'COMPLETED') {
           setCompletedRide(finishedRide);
@@ -332,7 +351,7 @@ export default function PassengerDashboard() {
   }
 
   const requestRide = async () => {
-    if (bookingInFlight.current || sameZone || !fare) return;
+    if (bookingInFlight.current || sameZone || !fare || !fareIsCurrent || fareLoading) return;
     // Guards against a second click landing before React re-renders the disabled button.
     bookingInFlight.current = true;
     setRequesting(true);
@@ -346,6 +365,7 @@ export default function PassengerDashboard() {
       const data = await readApiResponse(res);
       if (!res.ok) throw new Error(data.error || 'We could not book that ride. Please try again.');
 
+      rideVersion.current++;
       previousStatus.current = 'REQUESTED';
       activeRideRef.current = data.ride as PassengerRide;
       setCompletedRide(null);
@@ -375,6 +395,7 @@ export default function PassengerDashboard() {
         const data = await readApiResponse(res);
         throw new Error(data.error || 'Could not cancel the ride.');
       }
+      rideVersion.current++;
       previousStatus.current = null;
       activeRideRef.current = null;
       setActiveRide(null);
@@ -700,7 +721,7 @@ export default function PassengerDashboard() {
                 {!zonesError && (
                   <div className="mt-8 border-t border-[#2C3831] pt-6">
                     <FareSummary
-                      fare={fare}
+                      fare={fareIsCurrent ? fare : null}
                       loading={fareLoading || zonesLoading}
                       error={fareError}
                       onRetry={refreshFare}
@@ -709,7 +730,7 @@ export default function PassengerDashboard() {
                     <button
                       type="button"
                       onClick={requestRide}
-                      disabled={requesting || sameZone || !fare || fareLoading || Boolean(zonesError)}
+                      disabled={requesting || sameZone || !fare || !fareIsCurrent || fareLoading || Boolean(zonesError)}
                       aria-busy={requesting}
                       className={`mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#F0FDF4] text-lg font-semibold text-[#022C22] transition-colors hover:bg-[#DCFCE7] disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING} focus-visible:ring-offset-[#131815]`}
                     >

@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { readApiResponse } from '@/lib/api-response';
 
 export default function Onboarding() {
   const { user, isLoaded, isSignedIn } = useUser();
@@ -14,13 +15,10 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false);
   const [needsRole, setNeedsRole] = useState(false);
 
-  useEffect(() => {
-    if (isLoaded && isSignedIn && user) {
-      checkAndSyncUser();
-    }
-  }, [isLoaded, isSignedIn, user]);
-
-  const checkAndSyncUser = async (selectedRole?: string) => {
+  const syncInFlight = useRef(false);
+  const checkAndSyncUser = useCallback(async (selectedRole?: string) => {
+    if (syncInFlight.current) return;
+    syncInFlight.current = true;
     try {
       setLoading(true);
       const res = await fetch('/api/auth/clerk-sync', {
@@ -28,7 +26,7 @@ export default function Onboarding() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: selectedRole })
       });
-      const data = await res.json();
+      const data = await readApiResponse(res);
       
       if (!res.ok) {
         if (data.needsRole) {
@@ -53,8 +51,21 @@ export default function Onboarding() {
        toast({ title: 'Error', description: err.message, variant: 'destructive' });
        await signOut();
        router.push('/login');
+    } finally {
+      syncInFlight.current = false;
+      setLoading(false);
     }
-  };
+  }, [router, signOut, toast]);
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      router.replace('/login');
+      return;
+    }
+    if (isLoaded && isSignedIn && user) {
+      checkAndSyncUser();
+    }
+  }, [isLoaded, isSignedIn, user, router, checkAndSyncUser]);
 
   if (!isLoaded || loading || (!needsRole && isSignedIn)) {
     return <div className="flex h-screen items-center justify-center bg-[#0A0D0B]"><Loader2 className="w-8 h-8 animate-spin text-[#10B981]" /></div>;

@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { requireTestDatabase } from './require-test-database';
 import app from '../app';
 import { prisma } from '../prisma';
 import bcrypt from 'bcrypt';
@@ -14,6 +15,7 @@ describe('Concurrency & Capacity Enforcement', () => {
   let vehicleId: number;
 
   beforeAll(async () => {
+    requireTestDatabase();
     // Cleanup
     await prisma.rideRequest.deleteMany();
     await prisma.pool.deleteMany();

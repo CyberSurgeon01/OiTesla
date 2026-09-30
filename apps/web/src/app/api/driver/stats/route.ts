@@ -6,12 +6,12 @@ import { startOfDhakaDay, startOfDhakaMonth } from '@/lib/datetime';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const prisma = getPrisma();
   try {
     const user = await getAuthUser(req);
     if (!user || user.role !== 'DRIVER') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const prisma = getPrisma();
 
     // Boundaries must be Dhaka-local: a ride completing at 00:30 Dhaka is "yesterday" in
     // UTC, so server-local (UTC on Vercel) boundaries would drop it from today's total.

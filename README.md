@@ -44,7 +44,7 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 - **Earnings & Rating Dashboard**: View total earnings, passenger count, and passenger ratings for past pools.
 
 ### System & Architecture
-- **Serverless Full-Stack**: Fully unified Next.js 14 App Router application deployed on Vercel.
+- **Serverless Full-Stack**: Fully unified Next.js 15 App Router application deployed on Vercel.
 - **Concurrency & Race Condition Safety**: Transactions ensure that drivers cannot overbook their vehicle's seat capacity when multiple passengers are accepted simultaneously.
 - **Integer Currency**: All financial data (fares, wallets) are calculated and stored in integers (`poysha`) to eliminate float precision errors.
 
@@ -54,7 +54,7 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 
 ```mermaid
 flowchart LR
-    Browser[Web Browser] -->|HTTP / JSON| NextJS[Next.js 14 Serverless API]
+    Browser[Web Browser] -->|HTTP / JSON| NextJS[Next.js 15 Serverless API]
     NextJS -->|Prisma ORM| Postgres[(PostgreSQL)]
 ```
 
@@ -104,7 +104,7 @@ erDiagram
 ---
 
 ## Tech Stack
-- **Frontend**: Next.js 14 (App Router), React 18, Tailwind CSS v3, Lucide Icons, Shadcn UI.
+- **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS v3, Lucide Icons, Shadcn UI.
 - **Backend**: Next.js API Routes (Serverless), TypeScript, JWT.
 - **Database**: PostgreSQL 15, Prisma ORM.
 - **Email**: Brevo HTTP API for OTP verification.
@@ -125,22 +125,41 @@ erDiagram
    ```bash
    cp .env.example .env
    ```
-   Fill in your `DATABASE_URL` (PostgreSQL), `JWT_SECRET`, `BREVO_API_KEY`, and `BREVO_SENDER`.
+   Fill in your `DATABASE_URL` (PostgreSQL), `JWT_SECRET`, `BREVO_API_KEY`, `BREVO_SENDER`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY`. The Clerk keys enable Google sign-in.
 
 3. **Install dependencies and setup database**:
    ```bash
    npm install
-   npx prisma db push
+   npx prisma migrate deploy
    npx prisma generate
    ```
 
 4. **Seed the database (Optional)**:
-   You can write a custom seed script or manually create users. To manually grant a driver a vehicle, update the database directly.
+   Create accounts through signup. Driver accounts receive one offline vehicle when verified or signed in, including Google sign-in.
 
 5. **Start the development server**:
    ```bash
    npm run dev
    ```
+
+### Checks and integration tests
+
+From `apps/web`, run `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build`.
+
+Integration tests require an isolated PostgreSQL database named `oitesla_test` on localhost. They create their own accounts and remove those fixtures afterward. In a terminal from `apps/web`:
+
+```bash
+export DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/oitesla_test'
+export JWT_SECRET='local-test-signing-secret'
+export BREVO_API_KEY=''
+export BREVO_SENDER=''
+npx prisma migrate deploy
+npm run dev -- --hostname 127.0.0.1 --port 3107
+```
+
+In a second terminal, set the same `DATABASE_URL` and run `npm run test:integration`. Use `TEST_ORIGIN` if the test server uses a different local port. Always point the server and test runner at the same test database.
+
+`docker compose up --build web` starts the unified web app and PostgreSQL and applies the web migrations. The historical Express service is optional under `--profile legacy`; its tests require a separate local database named `oitesla_api_test`.
 
 ### Vercel Deployment
 OiTesla is designed to be deployed instantly on Vercel. 
@@ -152,7 +171,7 @@ OiTesla is designed to be deployed instantly on Vercel.
 
 ## Demo Credentials
 
-To test the application locally without verifying emails, check your terminal console logs—the OTP code is printed locally during signup and login if `BREVO_API_KEY` is absent.
+To test the application locally without verifying emails, check your terminal console logs—the OTP code is printed locally during signup if `BREVO_API_KEY` is absent.
 
 ---
 

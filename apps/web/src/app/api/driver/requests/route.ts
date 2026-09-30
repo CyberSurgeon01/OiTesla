@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { getAuthUser } from '@/lib/auth';
+import { apiError } from '@/lib/http-error';
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,8 +23,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(requests);
-  } catch (error: any) {
-    console.error(error);
-    return NextResponse.json({ error: error.message || 'Failed to fetch requests' }, { status: 500 });
+  } catch (error) {
+    return apiError(error, 'Failed to fetch requests');
   }
 }

@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { RideAmount, RideStatusBadge } from '@/components/passenger/ride-row';
+import { formatDhakaDate } from '@/lib/datetime';
 import { ArrowLeft, Loader2, MapPin, Calendar, Clock, User } from 'lucide-react';
 
 export default function DriverHistory() {
@@ -63,8 +65,9 @@ export default function DriverHistory() {
         ) : (
           <div className="space-y-4">
             {history.map((pool: any) => {
-              const totalFare = pool.rideRequests.reduce((acc: number, r: any) => acc + (r.fare_amount || 0), 0);
-              const totalSeats = pool.rideRequests.reduce((acc: number, r: any) => acc + (r.seats_requested || 0), 0);
+              const completedRides = pool.rideRequests.filter((ride: any) => ride.status === 'COMPLETED');
+              const totalFare = completedRides.reduce((acc: number, r: any) => acc + (r.fare_amount || 0), 0);
+              const totalSeats = completedRides.reduce((acc: number, r: any) => acc + (r.seats_requested || 0), 0);
 
               return (
                 <div key={pool.id} className="bg-[#131815] border border-[#2C3831] rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
@@ -72,7 +75,7 @@ export default function DriverHistory() {
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-[#A1A1AA]" />
                       <span className="text-sm font-medium text-[#A1A1AA]">
-                        {new Date(pool.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {formatDhakaDate(pool.createdAt)}
                       </span>
                     </div>
                     <span className="text-xs font-semibold uppercase tracking-widest text-[#10B981]">
@@ -103,9 +106,10 @@ export default function DriverHistory() {
                                 <span className="text-sm font-medium text-[#F3F4F6]">{ride.passenger.name}</span>
                                 <span className="text-xs text-[#A1A1AA] mt-0.5">{ride.pickup_zone} → {ride.destination_zone}</span>
                               </div>
-                              <span className="text-sm font-semibold text-[#F3F4F6]">
-                                ৳{(ride.fare_amount / 100).toFixed(2)}
-                              </span>
+                              <div className="flex flex-col items-end gap-1">
+                                <RideStatusBadge status={ride.status} />
+                                <RideAmount ride={ride} />
+                              </div>
                             </div>
                             {ride.rating && (
                               <div className="flex flex-col gap-1 border-t border-[#1E2621] pt-2 mt-1">
@@ -115,7 +119,7 @@ export default function DriverHistory() {
                                   ))}
                                 </div>
                                 {ride.rating_comment && (
-                                  <span className="text-xs text-[#A1A1AA] italic">"{ride.rating_comment}"</span>
+                                  <span className="text-xs text-[#A1A1AA] italic">&ldquo;{ride.rating_comment}&rdquo;</span>
                                 )}
                               </div>
                             )}

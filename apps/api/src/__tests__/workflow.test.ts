@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { requireTestDatabase } from './require-test-database';
 import app from '../app';
 import { prisma } from '../prisma';
 import bcrypt from 'bcrypt';
@@ -15,6 +16,7 @@ describe('Workflow & Rules Enforcement', () => {
   let p1RideId: number;
 
   beforeAll(async () => {
+    requireTestDatabase();
     // Cleanup
     await prisma.rideRequest.deleteMany();
     await prisma.pool.deleteMany();

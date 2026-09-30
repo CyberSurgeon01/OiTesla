@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { readStoredUser } from '@/lib/session';
 import Link from 'next/link';
@@ -8,6 +8,7 @@ import { Loader2, Menu, X, User, MapPin, Navigation, Flag, LogOut, ArrowRight, C
 import { cn } from '@/lib/utils';
 import { readApiResponse } from '@/lib/api-response';
 import { RideProgress } from '@/components/ride-progress';
+import { formatDhakaDate } from '@/lib/datetime';
 
 export default function DriverDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -25,40 +26,36 @@ export default function DriverDashboard() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const fetchPools = async (token: string) => {
+  const pollInFlight = useRef(false);
+  const fetchPools = useCallback(async (token: string) => {
+    if (pollInFlight.current) return;
+    pollInFlight.current = true;
     try {
-      const [res, reqRes, statusRes] = await Promise.all([
-        fetch('/api/driver/pools', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/driver/requests', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/driver/status', { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      if (statusRes.ok) setIsOnline((await readApiResponse(statusRes)).status === 'ONLINE');
-      if (res.status === 401 || res.status === 403) {
+      const [res, reqRes, statusRes, statsRes, historyRes] = await Promise.all(
+        ['pools', 'requests', 'status', 'stats', 'history'].map(path =>
+          fetch(`/api/driver/${path}`, { headers: { Authorization: `Bearer ${token}` } })),
+      );
+      if ([res, reqRes, statusRes, statsRes, historyRes].some(response => response.status === 401 || response.status === 403)) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         router.push('/login');
         return;
       }
-      if (res.ok) {
-        const pools = await res.json();
-        setActivePools(pools);
+      if (statusRes.ok) setIsOnline((await readApiResponse(statusRes)).status === 'ONLINE');
+      if (res.ok) setActivePools(await readApiResponse(res, { allowArray: true }));
+      if (reqRes.ok) setPendingRequests(await readApiResponse(reqRes, { allowArray: true }));
+      if (statsRes.ok) {
+        const data = await readApiResponse(statsRes);
+        if (typeof data.gainedToday === 'number' && typeof data.gainedThisMonth === 'number') setStats(data);
       }
-      if (reqRes.ok) {
-        const requests = await reqRes.json();
-        setPendingRequests(requests);
-      
-      fetch('/api/driver/stats', { headers: { Authorization: `Bearer ${token}` } })
-        .then(res => res.json()).then(data => { if(!data.error) setStats(data); });
-        
-      fetch('/api/driver/history', { headers: { Authorization: `Bearer ${token}` } })
-        .then(res => res.json()).then(data => { if(Array.isArray(data)) setFullHistory(data); });
-      }
-    } catch (e) {
-      console.error(e);
+      if (historyRes.ok) setFullHistory(await readApiResponse(historyRes, { allowArray: true }));
+    } catch (error) {
+      console.error(error);
     } finally {
+      pollInFlight.current = false;
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -81,7 +78,7 @@ export default function DriverDashboard() {
     
     const interval = setInterval(() => fetchPools(token), 1000);
     return () => clearInterval(interval);
-  }, [router]);
+  }, [router, fetchPools]);
 
   const toggleOnline = async () => {
     setStatusLoading(true);
@@ -263,7 +260,7 @@ export default function DriverDashboard() {
                   return (
                     <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981]/50 transition-colors">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-400">{new Date(pool.createdAt).toLocaleDateString()}</span>
+                        <span className="text-xs text-gray-400">{formatDhakaDate(pool.createdAt)}</span>
                         <span className="font-semibold text-[#10B981]">৳{(totalEarned / 100).toFixed(2)}</span>
                       </div>
                       <div className="text-sm font-medium text-white">{completedRides.length} ride{completedRides.length !== 1 ? 's' : ''}</div>
@@ -356,6 +353,9 @@ export default function DriverDashboard() {
           </div>
           <button
             onClick={toggleOnline}
+            role="switch"
+            aria-checked={isOnline}
+            aria-label="Accepting rides"
             disabled={statusLoading}
             className={cn(
               "relative inline-flex h-8 w-14 items-center rounded-full transition-colors disabled:opacity-50",
@@ -420,7 +420,7 @@ export default function DriverDashboard() {
                   <div className="p-5 bg-[#1E2621]">
                     <button 
                       onClick={() => acceptRequest(ride.id)}
-                      disabled={actionLoading === ride.id}
+                      disabled={!isOnline || actionLoading !== null}
                       className="w-full h-12 rounded-xl bg-[#F0FDF4] text-[#022C22] font-semibold text-sm transition-all duration-300 hover:bg-[#DCFCE7] disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {actionLoading === ride.id && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -508,7 +508,7 @@ export default function DriverDashboard() {
                       </div>
                       <div>
                         <div className="font-medium text-sm text-[#F3F4F6]">{completedRides.length} ride{completedRides.length !== 1 ? 's' : ''}</div>
-                        <div className="text-xs text-[#6B7280] mt-0.5">{pool.status.toLowerCase()} • {new Date(pool.createdAt).toLocaleDateString()}</div>
+                        <div className="text-xs text-[#6B7280] mt-0.5">{pool.status.toLowerCase()} • {formatDhakaDate(pool.createdAt)}</div>
                       </div>
                     </div>
                     <div className="font-semibold text-sm text-[#F3F4F6]">৳{(totalEarned / 100).toFixed(2)}</div>

@@ -212,7 +212,7 @@ export default function Signup() {
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-white">Verify Email</h1>
               <p className="text-sm text-gray-400 mt-2">
-                We've sent a 6-digit code to <span className="text-white font-medium">{email}</span>.
+                We&apos;ve sent a 6-digit code to <span className="text-white font-medium">{email}</span>.
                 Check your email inbox (and spam folder).
               </p>
             </div>

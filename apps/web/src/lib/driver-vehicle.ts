@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
 export async function ensureDriverVehicle(tx: Prisma.TransactionClient, driverId: number) {
   // Lock the user so concurrent verification/login requests cannot create duplicates.

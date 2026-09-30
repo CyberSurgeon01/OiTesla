@@ -1,8 +1,47 @@
 import { Prisma, PrismaClient, RideStatus } from '@prisma/client';
 import { HttpError } from './http-error';
 import { quoteFare, validateQuoteInput } from './fare/pricing';
+import { isDestinationCompatible } from './pooling/geography';
 
 const activeRideWhere = { status: { notIn: [RideStatus.CANCELLED, RideStatus.COMPLETED] } };
+
+export async function acceptRide(prisma: PrismaClient, driverId: number, rideId: number) {
+  if (!Number.isSafeInteger(rideId) || rideId < 1) throw new HttpError(400, 'Invalid ride ID');
+  return prisma.$transaction(async tx => {
+    const reference = await tx.vehicle.findFirst({ where: { driver_id: driverId } });
+    if (!reference) throw new HttpError(404, 'Vehicle not found');
+    // Serialize capacity checks, transitions and acceptance for this vehicle.
+    await tx.$queryRaw`SELECT id FROM "Vehicle" WHERE id = ${reference.id} FOR UPDATE`;
+    const vehicle = await tx.vehicle.findUniqueOrThrow({ where: { id: reference.id } });
+    if (vehicle.status !== 'ONLINE') throw new HttpError(409, 'Go online before accepting rides');
+    // Drivers with different vehicles must still compete for the same ride lock.
+    await tx.$queryRaw`SELECT id FROM "RideRequest" WHERE id = ${rideId} FOR UPDATE`;
+    const ride = await tx.rideRequest.findUnique({ where: { id: rideId } });
+    if (!ride || ride.status !== 'REQUESTED' || ride.pool_id !== null) {
+      throw new HttpError(409, 'Ride is no longer available');
+    }
+    const pool = await tx.pool.findFirst({
+      where: { vehicle_id: vehicle.id, status: 'ACTIVE' },
+      include: { rideRequests: { where: activeRideWhere } },
+    });
+    const rides = pool?.rideRequests ?? [];
+    if (rides.some(r => r.status !== 'ACCEPTED' || r.pickup_zone !== ride.pickup_zone)) {
+      throw new HttpError(409, 'Incompatible with current pool status or pickup zone');
+    }
+    if (rides.length && !isDestinationCompatible(ride.pickup_zone, rides.map(r => r.destination_zone), ride.destination_zone)) {
+      throw new HttpError(409, 'Destination not compatible');
+    }
+    if (rides.reduce((sum, r) => sum + r.seats_requested, 0) + ride.seats_requested > vehicle.seat_capacity) {
+      throw new HttpError(409, 'Not enough seat capacity');
+    }
+    const poolId = pool?.id ?? (await tx.pool.create({ data: { vehicle_id: vehicle.id } })).id;
+    const now = new Date();
+    return tx.rideRequest.update({
+      where: { id: rideId },
+      data: { pool_id: poolId, status: 'ACCEPTED', matched_at: now, accepted_at: now },
+    });
+  }, { maxWait: 10000, timeout: 15000 });
+}
 
 export async function requestRide(prisma: PrismaClient, passengerId: number, body: Record<string, unknown>) {
   const { pickup_zone, destination_zone, seats_requested = 1, payment_method = 'CASH' } = body;
@@ -88,23 +127,34 @@ export async function transitionPool(prisma: PrismaClient, driverId: number, poo
   }, { maxWait: 10000, timeout: 15000 });
 }
 
+class RideAssignedDuringCancellation extends Error {}
+
 export async function cancelRide(prisma: PrismaClient, passengerId: number, rideId: number) {
   if (!Number.isInteger(rideId) || rideId < 1) throw new HttpError(400, 'Invalid ride ID');
-  return prisma.$transaction(async tx => {
-    const reference = await tx.rideRequest.findUnique({ where: { id: rideId }, include: { pool: true } });
-    if (!reference) throw new HttpError(404, 'Ride not found');
-    if (reference.passenger_id !== passengerId) throw new HttpError(403, 'Forbidden');
-    if (reference.pool) await tx.$queryRaw`SELECT id FROM "Vehicle" WHERE id = ${reference.pool.vehicle_id} FOR UPDATE`;
-    await tx.$queryRaw`SELECT id FROM "RideRequest" WHERE id = ${rideId} FOR UPDATE`;
-    const ride = await tx.rideRequest.findUniqueOrThrow({ where: { id: rideId } });
-    if (ride.status === 'CANCELLED') return ride;
-    if (!['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED'].includes(ride.status)) {
-      throw new HttpError(400, `Invalid transition from ${ride.status} to CANCELLED`);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await prisma.$transaction(async tx => {
+        const reference = await tx.rideRequest.findUnique({ where: { id: rideId }, include: { pool: true } });
+        if (!reference) throw new HttpError(404, 'Ride not found');
+        if (reference.passenger_id !== passengerId) throw new HttpError(403, 'Forbidden');
+        if (reference.pool) await tx.$queryRaw`SELECT id FROM "Vehicle" WHERE id = ${reference.pool.vehicle_id} FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM "RideRequest" WHERE id = ${rideId} FOR UPDATE`;
+        const ride = await tx.rideRequest.findUniqueOrThrow({ where: { id: rideId } });
+        // Retry assignment changes in vehicle -> ride lock order, as transitions do.
+        if (ride.pool_id !== reference.pool_id) throw new RideAssignedDuringCancellation();
+        if (ride.status === 'CANCELLED') return ride;
+        if (!['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED'].includes(ride.status)) {
+          throw new HttpError(400, `Invalid transition from ${ride.status} to CANCELLED`);
+        }
+        const updated = await tx.rideRequest.update({ where: { id: rideId }, data: { status: 'CANCELLED', cancelled_at: new Date() } });
+        if (ride.pool_id && !await tx.rideRequest.count({ where: { pool_id: ride.pool_id, ...activeRideWhere } })) {
+          await tx.pool.update({ where: { id: ride.pool_id }, data: { status: 'CANCELLED' } });
+        }
+        return updated;
+      }, { maxWait: 10000, timeout: 15000 });
+    } catch (error) {
+      if (!(error instanceof RideAssignedDuringCancellation)) throw error;
     }
-    const updated = await tx.rideRequest.update({ where: { id: rideId }, data: { status: 'CANCELLED', cancelled_at: new Date() } });
-    if (ride.pool_id && !await tx.rideRequest.count({ where: { pool_id: ride.pool_id, ...activeRideWhere } })) {
-      await tx.pool.update({ where: { id: ride.pool_id }, data: { status: 'CANCELLED' } });
-    }
-    return updated;
-  });
+  }
+  throw new HttpError(409, 'Ride changed while cancelling. Please try again.');
 }

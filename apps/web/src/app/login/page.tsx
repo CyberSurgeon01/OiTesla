@@ -162,7 +162,7 @@ export default function Login() {
 
         
         <div className="mt-8 text-center text-sm text-gray-400">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/signup" className="font-semibold text-white hover:text-[#10B981] transition-colors underline underline-offset-4">
             Sign up
           </Link>

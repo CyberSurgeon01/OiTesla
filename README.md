@@ -9,6 +9,13 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 
 ## UI Previews
 
+### Authentication (Login & Signup)
+<div style="display: flex; gap: 10px;">
+  <img src="./apps/web/public/screenshots/login.png" width="48%" />
+  <img src="./apps/web/public/screenshots/signup.png" width="48%" />
+</div>
+
+
 ### Passenger Dashboard & Active Ride
 ![Passenger Active Ride](./apps/web/public/screenshots/passenger-active-ride.png)
 
@@ -21,12 +28,6 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 ### Comprehensive Trip History
 ![Trip History](./apps/web/public/screenshots/passenger-history.png)
 
-
-### Authentication (Login & Signup)
-<div style="display: flex; gap: 10px;">
-  <img src="./apps/web/public/screenshots/login.png" width="48%" />
-  <img src="./apps/web/public/screenshots/signup.png" width="48%" />
-</div>
 
 ## Features
 

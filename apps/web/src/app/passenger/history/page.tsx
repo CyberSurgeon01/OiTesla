@@ -97,6 +97,18 @@ export default function PassengerHistory() {
                       <span>{ride.destination_zone}</span>
                     </div>
                   </div>
+                  {ride.rating && (
+                    <div className="mt-2 pt-4 border-t border-[#2C3831] flex flex-col gap-2">
+                      <div className="flex items-center gap-1 text-yellow-400">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <span key={i}>{i < ride.rating ? '★' : '☆'}</span>
+                        ))}
+                      </div>
+                      {ride.rating_comment && (
+                        <p className="text-sm text-[#A1A1AA] italic">"{ride.rating_comment}"</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

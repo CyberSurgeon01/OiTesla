@@ -89,6 +89,10 @@ export default function PassengerDashboard() {
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [completedRideToRate, setCompletedRideToRate] = useState<any>(null);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
   
   const [pickup, setPickup] = useState(ZONES[0]);
   const [destination, setDestination] = useState(ZONES[1]);
@@ -110,6 +114,23 @@ export default function PassengerDashboard() {
     return () => clearTimeout(timer);
   }, [pickup, destination, seats]);
 
+  const checkRecentCompletedRide = async (token: string) => {
+    try {
+      const res = await fetch(`/api/passenger/rides/history`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const history = await res.json();
+        if (history.length > 0) {
+          const lastRide = history[0];
+          if (lastRide.status === 'COMPLETED' && !lastRide.rating) {
+            setCompletedRideToRate(lastRide);
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const fetchActiveRide = async (token: string) => {
     try {
       const res = await fetch(`/api/passenger/rides/active`, {
@@ -123,6 +144,12 @@ export default function PassengerDashboard() {
       }
       if (res.ok) {
         const data = await res.json();
+        
+        if (!data && previousStatusRef.current && ['STARTED', 'DRIVER_ARRIVED', 'ACCEPTED'].includes(previousStatusRef.current)) {
+          toast({ title: "Trip Completed! 🎉", description: "You have arrived at your destination." });
+          checkRecentCompletedRide(token);
+        }
+        
         setActiveRide(data);
         if (data && previousStatusRef.current && previousStatusRef.current !== data.status) {
           const status = data.status;
@@ -137,6 +164,26 @@ export default function PassengerDashboard() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const submitRating = async () => {
+    if (!completedRideToRate || rating === 0) return;
+    setSubmittingRating(true);
+    try {
+      const res = await fetch(`/api/passenger/rides/${completedRideToRate.id}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ rating, comment: ratingComment })
+      });
+      if (res.ok) {
+        toast({ title: "Thanks for your feedback! ⭐", description: "Your rating has been submitted." });
+        setCompletedRideToRate(null);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -158,6 +205,7 @@ export default function PassengerDashboard() {
     
     setUser(parsedUser);
     fetchActiveRide(token);
+    checkRecentCompletedRide(token);
 
     const interval = setInterval(() => {
       fetchActiveRide(token);
@@ -245,6 +293,52 @@ export default function PassengerDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12">
+      
+      {/* Rating Popup */}
+      {completedRideToRate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#131815] border border-[#2C3831] rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
+            <h3 className="text-xl font-bold text-[#F3F4F6] text-center mb-2">Rate Your Trip</h3>
+            <p className="text-sm text-[#A1A1AA] text-center mb-6">How was your ride from {completedRideToRate.pickup_zone}?</p>
+            
+            <div className="flex justify-center gap-2 mb-6">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button 
+                  key={star} 
+                  onClick={() => setRating(star)}
+                  className={`text-4xl transition-transform hover:scale-110 ${rating >= star ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]' : 'text-[#2C3831]'}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+
+            <textarea 
+              placeholder="Leave a comment (optional)..."
+              value={ratingComment}
+              onChange={e => setRatingComment(e.target.value)}
+              className="w-full bg-[#0A0D0B] border border-[#2C3831] rounded-xl p-3 text-sm text-[#F3F4F6] placeholder-[#71717A] focus:outline-none focus:border-[#10B981] mb-6 resize-none h-24"
+            />
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setCompletedRideToRate(null)}
+                className="flex-1 py-3 rounded-xl font-semibold text-[#A1A1AA] hover:text-[#F3F4F6] hover:bg-[#1E2621] transition-colors"
+              >
+                Skip
+              </button>
+              <button 
+                onClick={submitRating}
+                disabled={rating === 0 || submittingRating}
+                className="flex-1 py-3 rounded-xl bg-[#10B981] text-[#022C22] font-semibold transition-all hover:bg-[#059669] disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {submittingRating && <Loader2 className="w-4 h-4 animate-spin" />}
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Top Header */}
       <header className="sticky top-0 z-40 w-full bg-[#0A0D0B]/90 backdrop-blur-xl border-b border-[#2C3831]">

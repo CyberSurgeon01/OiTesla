@@ -104,6 +104,9 @@ model RideRequest {
   started_at       DateTime?
   completed_at     DateTime?
   cancelled_at     DateTime?
+  rating           Int?
+  rating_comment   String?
+
 
   passenger User  @relation("PassengerRides", fields: [passenger_id], references: [id])
   pool      Pool? @relation(fields: [pool_id], references: [id])

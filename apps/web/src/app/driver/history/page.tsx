@@ -97,14 +97,28 @@ export default function DriverHistory() {
                       <span className="text-xs font-semibold uppercase tracking-widest text-[#A1A1AA]">Trip Details</span>
                       <div className="divide-y divide-[#2C3831] border border-[#2C3831] rounded-xl overflow-hidden">
                         {pool.rideRequests.map((ride: any) => (
-                          <div key={ride.id} className="p-3 bg-[#0A0D0B] flex justify-between items-center">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-[#F3F4F6]">{ride.passenger.name}</span>
-                              <span className="text-xs text-[#A1A1AA] mt-0.5">{ride.pickup_zone} → {ride.destination_zone}</span>
+                          <div key={ride.id} className="p-3 bg-[#0A0D0B] flex flex-col gap-2">
+                            <div className="flex justify-between items-center">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium text-[#F3F4F6]">{ride.passenger.name}</span>
+                                <span className="text-xs text-[#A1A1AA] mt-0.5">{ride.pickup_zone} → {ride.destination_zone}</span>
+                              </div>
+                              <span className="text-sm font-semibold text-[#F3F4F6]">
+                                ৳{(ride.fare_amount / 100).toFixed(2)}
+                              </span>
                             </div>
-                            <span className="text-sm font-semibold text-[#F3F4F6]">
-                              ৳{(ride.fare_amount / 100).toFixed(2)}
-                            </span>
+                            {ride.rating && (
+                              <div className="flex flex-col gap-1 border-t border-[#1E2621] pt-2 mt-1">
+                                <div className="flex items-center gap-1 text-yellow-400 text-xs">
+                                  {Array.from({ length: 5 }).map((_, i) => (
+                                    <span key={i}>{i < ride.rating ? '★' : '☆'}</span>
+                                  ))}
+                                </div>
+                                {ride.rating_comment && (
+                                  <span className="text-xs text-[#A1A1AA] italic">"{ride.rating_comment}"</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

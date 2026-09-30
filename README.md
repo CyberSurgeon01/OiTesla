@@ -12,8 +12,8 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 ### Passenger Dashboard & Active Ride
 ![Passenger Active Ride](./apps/web/public/screenshots/passenger-active-ride.png)
 
-### Driver Active Trip & Capacity Management
-![Driver Active Trip](./apps/web/public/screenshots/driver-active-trip.png)
+### Driver Dashboard & Earnings
+![Driver Dashboard](./apps/web/public/screenshots/history.png)
 
 ### Post-Ride Rating Popup
 ![Rating Popup](./apps/web/public/screenshots/rating-popup.png)

@@ -27,12 +27,16 @@ export default function Signup() {
         console.error("Clerk is not loaded");
         return;
       }
+      if (clerk.user) {
+        window.location.href = "/onboarding";
+        return;
+      }
       console.log("Triggering Google OAuth...");
       await clerk.client.signIn.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/onboarding",
-        forceRedirectUrl: "/onboarding",
+        
       });
     } catch (err) {
       console.error("OAuth error:", err);

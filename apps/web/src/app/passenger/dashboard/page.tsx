@@ -18,6 +18,8 @@ import { RideProgress } from '@/components/ride-progress';
 import { RideAmount, RideRow, RideStatusBadge } from '@/components/passenger/ride-row';
 import { SeatSelector } from '@/components/passenger/seat-selector';
 import { ZoneSelect } from '@/components/passenger/zone-select';
+import { RatingAverage } from '@/components/rating-stars';
+import { RatingDialog } from '@/components/rating-dialog';
 
 const BOOKING_STORAGE_KEY = 'oitesla:passenger:booking';
 const RECENT_RIDE_LIMIT = 3;
@@ -26,7 +28,12 @@ const FARE_DEBOUNCE_MS = 250;
 
 type StoredBooking = { pickup: string; destination: string; seats: number };
 
-type RideStats = { spentToday: number; spentThisMonth: number };
+type RideStats = {
+  spentToday: number;
+  spentThisMonth: number;
+  averageRating: number | null;
+  ratingCount: number;
+};
 
 const FOCUS_RING =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0D0B]';
@@ -72,13 +79,16 @@ export default function PassengerDashboard() {
   const [cancelling, setCancelling] = useState(false);
 
   const [history, setHistory] = useState<PassengerRide[]>([]);
-  const [stats, setStats] = useState<RideStats>({ spentToday: 0, spentThisMonth: 0 });
+  const [stats, setStats] = useState<RideStats>({
+    spentToday: 0,
+    spentThisMonth: 0,
+    averageRating: null,
+    ratingCount: 0,
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
 
   const [ratingRide, setRatingRide] = useState<PassengerRide | null>(null);
-  const [rating, setRating] = useState(0);
-  const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
 
   const previousStatus = useRef<string | null>(null);
@@ -252,7 +262,12 @@ export default function PassengerDashboard() {
       if (res.ok) {
         const data = await readApiResponse(res);
         if (typeof data.spentToday === 'number' && typeof data.spentThisMonth === 'number') {
-          setStats({ spentToday: data.spentToday, spentThisMonth: data.spentThisMonth });
+          setStats({
+            spentToday: data.spentToday,
+            spentThisMonth: data.spentThisMonth,
+            averageRating: typeof data.averageRating === 'number' ? data.averageRating : null,
+            ratingCount: typeof data.ratingCount === 'number' ? data.ratingCount : 0,
+          });
         }
       }
     } catch {
@@ -273,8 +288,6 @@ export default function PassengerDashboard() {
       if (unrated) {
         setCompletedRide(unrated);
         setRatingRide(unrated);
-        setRating(0);
-        setRatingComment('');
       }
     } catch {
       // A missed rating prompt is not worth surfacing as an error.
@@ -306,8 +319,6 @@ export default function PassengerDashboard() {
           toast({ title: 'Trip completed', description: 'You have arrived at your destination.' });
           if (!finishedRide.rating) {
             setRatingRide(finishedRide);
-            setRating(0);
-            setRatingComment('');
           }
         } else {
           toast({ title: 'Ride closed', description: 'Your ride is no longer active.' });
@@ -409,14 +420,14 @@ export default function PassengerDashboard() {
     }
   };
 
-  const submitRating = async () => {
+  const submitRating = async (rating: number, comment: string) => {
     if (!ratingRide || rating === 0 || submittingRating) return;
     setSubmittingRating(true);
     try {
       const res = await fetch(`/api/passenger/rides/${ratingRide.id}/rate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenRef.current ?? ''}` },
-        body: JSON.stringify({ rating, comment: ratingComment }),
+        body: JSON.stringify({ rating, comment }),
       });
       if (!res.ok) throw new Error('Could not submit your rating.');
       toast({ title: 'Thanks for your feedback' });
@@ -490,6 +501,15 @@ export default function PassengerDashboard() {
         </div>
       </section>
 
+      <section aria-labelledby="rating-heading" className="mb-8">
+        <h2 id="rating-heading" className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#8B93A0]">
+          Your rating
+        </h2>
+        <div className="rounded-2xl border border-[#2C3831] bg-[#131815] p-4">
+          <RatingAverage average={stats.averageRating} count={stats.ratingCount} />
+        </div>
+      </section>
+
       <section aria-labelledby="sidebar-history-heading" className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
         <h2 id="sidebar-history-heading" className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#8B93A0]">
           Ride history
@@ -545,67 +565,13 @@ export default function PassengerDashboard() {
       </aside>
 
       {ratingRide && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="rating-title"
-            className="relative max-h-[90vh] w-full max-w-sm overflow-y-auto rounded-3xl border border-[#2C3831] bg-[#131815] p-6 shadow-2xl"
-          >
-            <h2 id="rating-title" className="mb-2 text-center text-xl font-bold text-[#F3F4F6]">
-              Rate your trip
-            </h2>
-            <p className="mb-6 text-center text-sm text-[#A1A1AA]">
-              How was your ride from {ratingRide.pickup_zone}?
-            </p>
-
-            <div role="radiogroup" aria-label="Rating out of 5" className="mb-6 flex justify-center gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  role="radio"
-                  aria-checked={rating === star}
-                  aria-label={`${star} star${star === 1 ? '' : 's'}`}
-                  onClick={() => setRating(star)}
-                  className={`text-4xl transition-transform hover:scale-110 ${FOCUS_RING} ${
-                    rating >= star ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]' : 'text-[#3F4A44]'
-                  }`}
-                >
-                  <span aria-hidden="true">★</span>
-                </button>
-              ))}
-            </div>
-
-            <label htmlFor="rating-comment" className="sr-only">Comment (optional)</label>
-            <textarea
-              id="rating-comment"
-              placeholder="Leave a comment (optional)"
-              value={ratingComment}
-              onChange={(event) => setRatingComment(event.target.value)}
-              className="mb-6 h-24 w-full resize-none rounded-xl border border-[#2C3831] bg-[#0A0D0B] p-3 text-sm text-[#F3F4F6] placeholder:text-[#8B93A0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]"
-            />
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setRatingRide(null)}
-                className={`flex-1 rounded-xl py-3 font-semibold text-[#A1A1AA] transition-colors hover:bg-[#1E2621] hover:text-[#F3F4F6] ${FOCUS_RING}`}
-              >
-                Skip
-              </button>
-              <button
-                type="button"
-                onClick={submitRating}
-                disabled={rating === 0 || submittingRating}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#10B981] py-3 font-semibold text-[#022C22] transition-colors hover:bg-[#059669] disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`}
-              >
-                {submittingRating && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                Submit
-              </button>
-            </div>
-          </div>
-        </div>
+        <RatingDialog
+          title="Rate your trip"
+          subtitle={`How was your ride from ${ratingRide.pickup_zone}?`}
+          submitting={submittingRating}
+          onSubmit={submitRating}
+          onClose={() => setRatingRide(null)}
+        />
       )}
 
       <div className={desktopSidebarOpen ? 'lg:pl-[320px]' : ''}>

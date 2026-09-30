@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { completeFareBreakdown, statusMetaFor, type CompleteFareBreakdown, type PassengerRide } from '@/lib/ride-status';
+import { RatingStars } from '@/components/rating-stars';
 import { formatDhakaDateTime, formatDhakaDate } from '@/lib/datetime';
 import { formatPoysha } from '@/lib/money';
 
@@ -56,6 +57,28 @@ function FareBreakdownLines({ breakdown }: { breakdown: CompleteFareBreakdown })
 }
 
 /**
+ * The score the driver gave this passenger, with any comment they left. Rendered on every
+ * RideRow so the feedback is visible in the dashboard sidebar, Recent rides and History
+ * alike. Renders nothing while the driver has not rated the ride.
+ */
+function DriverFeedback({ ride }: { ride: PassengerRide }) {
+  if (ride.driver_rating == null) return null;
+  return (
+    <div className="mt-3 border-t border-[#2C3831] pt-3">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-[#A1A1AA]">
+        Driver rated you
+        <RatingStars rating={ride.driver_rating} />
+      </p>
+      {ride.driver_rating_comment && (
+        <p className="mt-1.5 text-xs italic leading-relaxed text-[#A1A1AA]">
+          &ldquo;{ride.driver_rating_comment}&rdquo;
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * The compact ride row used by Recent Rides, the sidebar summary and History, so a ride
  * looks the same everywhere and the status/amount treatment cannot drift per screen.
  * Pass showFareBreakdown on History to expose the stored per-ride breakdown.
@@ -105,6 +128,7 @@ export function RideRow({ ride, compact = false, showFareBreakdown = false }: {
           {breakdownOpen && <FareBreakdownLines breakdown={breakdown} />}
         </>
       ) : null}
+      <DriverFeedback ride={ride} />
     </article>
   );
 }

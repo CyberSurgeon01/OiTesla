@@ -181,6 +181,45 @@ test('auth and ride workflow against an isolated database', async t => {
       const earnings = expectStatus(await api('/driver/stats', { token: driver.token }), 200);
       assert.equal(spend.spentToday, booking.ride.fare_amount);
       assert.equal(earnings.gainedToday * 100, booking.ride.fare_amount);
+
+      // Neither side has rated yet, so both averages are absent rather than zero.
+      assert.equal(earnings.averageRating, null);
+      assert.equal(earnings.ratingCount, 0);
+      assert.equal(spend.averageRating, null);
+      assert.equal(spend.ratingCount, 0);
+
+      const driverRatePath = `/driver/rides/${booking.ride.id}/rate`;
+      for (const body of [{ rating: 1.5 }, { rating: 6 }, { rating: 5, comment: {} }, { rating: 5, comment: 'a'.repeat(2001) }]) {
+        expectStatus(await api(driverRatePath, { token: driver.token, body }), 400);
+      }
+      expectStatus(await api('/driver/rides/invalid/rate', { token: driver.token, body: { rating: 5 } }), 400);
+      // A passenger may not rate, and a driver may not reach outside their own pool.
+      expectStatus(await api(driverRatePath, { token: p1.token, body: { rating: 5 } }), 403);
+      expectStatus(await api(driverRatePath, { token: otherDriver.token, body: { rating: 5 } }), 404);
+      expectStatus(await api(driverRatePath, { token: driver.token, body: { rating: 4, comment: ' Great passenger! ' } }), 200);
+      const ratedBothWays = await prisma.rideRequest.findUniqueOrThrow({ where: { id: booking.ride.id } });
+      assert.equal(ratedBothWays.driver_rating, 4);
+      assert.equal(ratedBothWays.driver_rating_comment, 'Great passenger!');
+      assert.equal(ratedBothWays.rating, 5, 'the driver rating must not overwrite the passenger rating');
+
+      // Both directions are visible in both roles' history.
+      const driverHistory = expectStatus(await api('/driver/history', { token: driver.token }), 200);
+      const driverView = driverHistory[0].rideRequests.find(r => r.id === booking.ride.id);
+      assert.equal(driverView.rating, 5);
+      assert.equal(driverView.rating_comment, 'Great ride!');
+      assert.equal(driverView.driver_rating, 4);
+      assert.equal(driverView.driver_rating_comment, 'Great passenger!');
+      const passengerHistory = expectStatus(await api('/passenger/rides/history', { token: p1.token }), 200);
+      const passengerView = passengerHistory.find(r => r.id === booking.ride.id);
+      assert.equal(passengerView.driver_rating, 4);
+      assert.equal(passengerView.driver_rating_comment, 'Great passenger!');
+
+      const ratedEarnings = expectStatus(await api('/driver/stats', { token: driver.token }), 200);
+      assert.equal(ratedEarnings.averageRating, 5);
+      assert.equal(ratedEarnings.ratingCount, 1);
+      const ratedSpend = expectStatus(await api('/passenger/stats', { token: p1.token }), 200);
+      assert.equal(ratedSpend.averageRating, 4);
+      assert.equal(ratedSpend.ratingCount, 1);
     });
     await t.test('retired reset endpoint cannot mutate rides or vehicle availability', async () => {
       const booking = expectStatus(await book(p1), 201);

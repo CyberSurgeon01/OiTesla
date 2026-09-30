@@ -26,6 +26,23 @@ export type PassengerRide = {
   cancelled_at?: string | null;
   rating?: number | null;
   rating_comment?: string | null;
+  driver_rating?: number | null;
+  driver_rating_comment?: string | null;
+};
+
+/**
+ * A ride as the driver sees it: the same ride row, plus the passenger it belongs to.
+ * Used by the driver dashboard and history so rating fields are typed rather than `any`.
+ */
+export type DriverRide = PassengerRide & {
+  passenger: { id: number; name: string };
+};
+
+export type DriverPool = {
+  id: number;
+  status: string;
+  createdAt: string;
+  rideRequests: DriverRide[];
 };
 
 export type StatusMeta = {

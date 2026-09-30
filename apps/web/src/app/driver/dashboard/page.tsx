@@ -8,7 +8,18 @@ import { Loader2, Menu, X, User, MapPin, Navigation, Flag, LogOut, ArrowRight, C
 import { cn } from '@/lib/utils';
 import { readApiResponse } from '@/lib/api-response';
 import { RideProgress } from '@/components/ride-progress';
+import { RatingAverage, RatingStars } from '@/components/rating-stars';
+import { RatingDialog } from '@/components/rating-dialog';
 import { formatDhakaDate } from '@/lib/datetime';
+import { averageRating } from '@/lib/rating';
+import type { DriverPool, DriverRide } from '@/lib/ride-status';
+
+type DriverStats = {
+  gainedToday: number;
+  gainedThisMonth: number;
+  averageRating: number | null;
+  ratingCount: number;
+};
 
 export default function DriverDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -18,10 +29,18 @@ export default function DriverDashboard() {
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [stats, setStats] = useState({ gainedToday: 0, gainedThisMonth: 0 });
-  const [fullHistory, setFullHistory] = useState<any[]>([]);
+  const [stats, setStats] = useState<DriverStats>({
+    gainedToday: 0,
+    gainedThisMonth: 0,
+    averageRating: null,
+    ratingCount: 0,
+  });
+  const [fullHistory, setFullHistory] = useState<DriverPool[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [ratingRide, setRatingRide] = useState<DriverRide | null>(null);
+  const [submittingRating, setSubmittingRating] = useState(false);
+
   
   const router = useRouter();
   const { toast } = useToast();
@@ -46,9 +65,16 @@ export default function DriverDashboard() {
       if (reqRes.ok) setPendingRequests(await readApiResponse(reqRes, { allowArray: true }));
       if (statsRes.ok) {
         const data = await readApiResponse(statsRes);
-        if (typeof data.gainedToday === 'number' && typeof data.gainedThisMonth === 'number') setStats(data);
+        if (typeof data.gainedToday === 'number' && typeof data.gainedThisMonth === 'number') {
+          setStats({
+            gainedToday: data.gainedToday,
+            gainedThisMonth: data.gainedThisMonth,
+            averageRating: typeof data.averageRating === 'number' ? data.averageRating : null,
+            ratingCount: typeof data.ratingCount === 'number' ? data.ratingCount : 0,
+          });
+        }
       }
-      if (historyRes.ok) setFullHistory(await readApiResponse(historyRes, { allowArray: true }));
+      if (historyRes.ok) setFullHistory((await readApiResponse(historyRes, { allowArray: true })) as DriverPool[]);
     } catch (error) {
       console.error(error);
     } finally {
@@ -165,6 +191,35 @@ export default function DriverDashboard() {
     router.push('/login');
   };
 
+  const submitRating = async (rating: number, comment: string) => {
+    if (!ratingRide || rating === 0 || submittingRating) return;
+    const token = localStorage.getItem('token');
+    if (!token) { router.push('/login'); return; }
+    setSubmittingRating(true);
+    try {
+      const res = await fetch(`/api/driver/rides/${ratingRide.id}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rating, comment }),
+      });
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.push('/login');
+        return;
+      }
+      if (!res.ok) throw new Error('Could not submit your rating.');
+      toast({ title: 'Thanks for the feedback' });
+      setRatingRide(null);
+      // The 1s poll refreshes history on its own; this just makes it feel immediate.
+      fetchPools(token);
+    } catch (error) {
+      toast({ title: 'Rating not saved', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
   if (!user || loading) {
     return (
       <div className="min-h-screen bg-[#0A0D0B] flex flex-col items-center justify-center">
@@ -248,23 +303,32 @@ export default function DriverDashboard() {
             </div>
           </div>
 
+          <div className="space-y-3 mb-8">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Your Rating</h3>
+            <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4">
+              <RatingAverage average={stats.averageRating} count={stats.ratingCount} />
+            </div>
+          </div>
+
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Past Pools</h3>
             <div className="space-y-3">
               {fullHistory.length === 0 ? (
                 <p className="text-sm text-gray-500">No pools yet.</p>
               ) : (
-                fullHistory.map((pool, idx) => {
-                  const completedRides = pool.rideRequests.filter((r: any) => r.status === 'COMPLETED');
-                  const totalEarned = completedRides.reduce((acc: number, r: any) => acc + r.fare_amount, 0);
+                fullHistory.map((pool) => {
+                  const completedRides = pool.rideRequests.filter(r => r.status === 'COMPLETED');
+                  const totalEarned = completedRides.reduce((acc, r) => acc + r.fare_amount, 0);
+                  const ratings = completedRides.map(r => r.rating);
+                  const ratedCount = ratings.filter((r): r is number => typeof r === 'number').length;
                   return (
-                    <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981]/50 transition-colors">
+                    <div key={pool.id} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981]/50 transition-colors">
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-400">{formatDhakaDate(pool.createdAt)}</span>
                         <span className="font-semibold text-[#10B981]">৳{(totalEarned / 100).toFixed(2)}</span>
                       </div>
                       <div className="text-sm font-medium text-white">{completedRides.length} ride{completedRides.length !== 1 ? 's' : ''}</div>
-                      <div className="text-xs text-gray-500 capitalize">{pool.status.toLowerCase()}</div>
+                      <RatingAverage average={averageRating(ratings)} count={ratedCount} />
                     </div>
                   )
                 })
@@ -497,21 +561,71 @@ export default function DriverDashboard() {
             <h3 className="font-semibold text-lg text-[#F3F4F6]">Recent Pools</h3>
           </div>
           <div className="space-y-3">
-             {fullHistory.slice(0, 3).map((pool, idx) => {
-                const completedRides = pool.rideRequests.filter((r: any) => r.status === 'COMPLETED');
-                const totalEarned = completedRides.reduce((acc: number, r: any) => acc + r.fare_amount, 0);
+             {fullHistory.slice(0, 3).map((pool) => {
+                const completedRides = pool.rideRequests.filter(r => r.status === 'COMPLETED');
+                const totalEarned = completedRides.reduce((acc, r) => acc + r.fare_amount, 0);
+                const ratings = completedRides.map(r => r.rating);
+                const ratedCount = ratings.filter((r): r is number => typeof r === 'number').length;
+                const poolAverage = averageRating(ratings);
                 return (
-                  <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-2xl p-5 flex items-center justify-between hover:bg-[#1A211D] transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-[#0A0D0B] border border-[#2C3831] flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-[#A1A1AA]" />
+
+                  <div key={pool.id} className="bg-[#131815] border border-[#2C3831] rounded-2xl p-5 hover:bg-[#1A211D] transition-colors">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-[#0A0D0B] border border-[#2C3831] flex items-center justify-center shrink-0">
+                          <Clock className="w-5 h-5 text-[#A1A1AA]" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm text-[#F3F4F6]">{completedRides.length} ride{completedRides.length !== 1 ? 's' : ''}</div>
+                          <div className="text-xs text-[#6B7280] mt-0.5">{pool.status.toLowerCase()} • {formatDhakaDate(pool.createdAt)}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-medium text-sm text-[#F3F4F6]">{completedRides.length} ride{completedRides.length !== 1 ? 's' : ''}</div>
-                        <div className="text-xs text-[#6B7280] mt-0.5">{pool.status.toLowerCase()} • {formatDhakaDate(pool.createdAt)}</div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {ratedCount > 0 && (
+                          <span className="hidden sm:inline-flex">
+                            <RatingStars rating={poolAverage} label={`Pool average ${poolAverage} out of 5 stars from ${ratedCount} rating${ratedCount === 1 ? '' : 's'}`} />
+                          </span>
+                        )}
+                        <div className="font-semibold text-sm text-[#F3F4F6]">৳{(totalEarned / 100).toFixed(2)}</div>
                       </div>
                     </div>
-                    <div className="font-semibold text-sm text-[#F3F4F6]">৳{(totalEarned / 100).toFixed(2)}</div>
+
+                    {completedRides.length > 0 && (
+                      <ul className="mt-4 space-y-2 border-t border-[#2C3831] pt-4">
+                        {completedRides.map(ride => (
+                          <li key={ride.id} className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex min-w-0 flex-col">
+                              <span className="truncate text-sm text-[#F3F4F6]">{ride.passenger.name}</span>
+                              <span className="truncate text-xs text-[#8B93A0]">{ride.pickup_zone} → {ride.destination_zone}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <RatingStars
+                                rating={ride.rating}
+                                size="md"
+                                label={ride.rating == null
+                                  ? `${ride.passenger.name} has not rated you yet`
+                                  : `${ride.passenger.name} rated you ${ride.rating} out of 5 stars`}
+                              />
+                              {ride.driver_rating == null ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setRatingRide(ride)}
+                                  className="rounded-lg border border-[#2C3831] bg-[#0A0D0B] px-3 py-1.5 text-xs font-semibold text-[#A1A1AA] transition-colors hover:border-[#10B981]/60 hover:text-white"
+                                >
+                                  Rate rider
+                                </button>
+                              ) : (
+                                <RatingStars
+                                  rating={ride.driver_rating}
+                                  size="md"
+                                  label={`You rated ${ride.passenger.name} ${ride.driver_rating} out of 5 stars`}
+                                />
+                              )}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )
              })}
@@ -520,6 +634,17 @@ export default function DriverDashboard() {
         </div>
 
       </main>
+
+      {ratingRide && (
+        <RatingDialog
+          title="Rate your rider"
+          subtitle={`How was ${ratingRide.passenger.name} as a passenger?`}
+          submitLabel="Submit"
+          submitting={submittingRating}
+          onSubmit={submitRating}
+          onClose={() => setRatingRide(null)}
+        />
+      )}
 
       {/* Sticky Bottom Action Bar for Active Trip */}
       {activeStickyAction && (

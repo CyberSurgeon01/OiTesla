@@ -8,8 +8,8 @@ import { MAX_RATING_COMMENT_LENGTH, parseRatingComment, parseRatingValue } from 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ ride_id: string }> }) {
   try {
     const user = getAuthUser(req);
-    if (!user || user.role !== 'PASSENGER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    
+    if (!user || user.role !== 'DRIVER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
     const { rating, comment } = await readJsonBody(req);
     const rideId = Number((await params).ride_id);
     if (!Number.isSafeInteger(rideId) || rideId < 1) {
@@ -28,9 +28,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rid
     }
 
     const prisma = getPrisma();
+    // Scoping the write through the pool's vehicle is what stops a driver from rating a
+    // ride on someone else's pool, and COMPLETED keeps it to finished trips only.
     const updated = await prisma.rideRequest.updateMany({
-      where: { id: rideId, passenger_id: user.id, status: 'COMPLETED' },
-      data: { rating: ratingValue, rating_comment: parsedComment.value }
+      where: {
+        id: rideId,
+        status: 'COMPLETED',
+        pool: { vehicle: { driver_id: user.id } },
+      },
+      data: { driver_rating: ratingValue, driver_rating_comment: parsedComment.value },
     });
 
     if (updated.count === 0) {

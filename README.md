@@ -25,14 +25,14 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 ### Passenger Experience
 - **Dynamic Fare Engine**: Fare preview based on fixed zone matrices and requested seats.
 - **Real-Time State Tracking**: 1-second polling ensures instant UI updates (with elegant radar ping animations and toast notifications) as the driver changes the ride status.
-- **Rating System**: After a ride is completed, passengers can leave a 1-5 star rating and comment.
-- **Trip History**: View all completed and cancelled rides, along with given ratings.
+- **Rating System**: After a ride is completed, passengers can leave a 1-5 star rating and comment for the driver, and drivers can leave one for the passenger in return.
+- **Trip History**: View all completed and cancelled rides, with both the rating you gave and the rating you received.
 
 ### Driver Experience
 - **Broadcast Request Pool**: View a live list of all unassigned passenger requests in the city.
 - **Manual Acceptance & Capacity Management**: Drivers can accept requests. The system strictly enforces the vehicle's maximum seat capacity.
 - **Active Trip Manager**: Seamlessly advance passengers through the lifecycle (`ACCEPTED` -> `DRIVER_ARRIVED` -> `STARTED` -> `COMPLETED`).
-- **Earnings & Rating Dashboard**: View total earnings, passenger count, and passenger ratings for past pools.
+- **Earnings & Rating Dashboard**: View total earnings, passenger count, your average star rating from passengers, and rate the riders on past pools.
 
 ### System & Architecture
 - **Serverless Full-Stack**: Fully unified Next.js 15 App Router application deployed on Vercel.
@@ -84,6 +84,8 @@ erDiagram
         enum payment_method "CASH | TESLA_PAY"
         int rating
         string rating_comment
+        int driver_rating
+        string driver_rating_comment
     }
 
     USER ||--o{ VEHICLE : "drives"
@@ -185,6 +187,7 @@ To test the application locally without verifying emails, check your terminal co
 - `POST /api/driver/requests/:ride_id/accept` - Accepts a ride request, assigning it to the driver's active pool if seat capacity allows.
 - `GET /api/driver/pools` - Retrieves the driver's currently active pool and passengers.
 - `GET /api/driver/history` - Retrieves past pools and aggregated earnings/ratings.
+- `POST /api/driver/rides/:id/rate` - Submits a 1-5 star rating and comment for the passenger on a ride from the driver's own pool. Scoped to completed rides.
 - `PATCH /api/driver/pools/:pool_id/status` - Batch advances all active rides in the pool to the next state (`ACCEPTED` -> `DRIVER_ARRIVED` -> `STARTED` -> `COMPLETED`).
 - `PATCH /api/driver/status` - Toggles driver online availability.
 

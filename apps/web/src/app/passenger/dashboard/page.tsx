@@ -1,664 +1,816 @@
-"use client";
-import { useEffect, useState, useRef } from 'react';
+'use client';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { readStoredUser } from '@/lib/session';
 import Link from 'next/link';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  Loader2, Minus, Plus, Car, AlertCircle, ChevronDown, Check, 
-  Search, Wallet, Clock, LogOut, ArrowRight, X, Menu, User, Navigation, ArrowRightLeft
+import {
+  AlertCircle, ArrowRight, ArrowRightLeft, Car, Clock, Loader2, LogOut, Menu, Navigation, Search, X,
 } from 'lucide-react';
 
-import { ZONES } from '@/lib/pooling/geography';
-import { fareBreakdown } from '@/lib/fare/fare.calculator';
+import { displayName, readStoredUser, type StoredUser } from '@/lib/session';
 import { readApiResponse } from '@/lib/api-response';
-const STEPS = ['REQUESTED', 'ACCEPTED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'];
+import { formatPoysha } from '@/lib/money';
+import { startOfDhakaDay } from '@/lib/datetime';
+import type { FareQuote } from '@/lib/fare/pricing';
+import type { PassengerRide } from '@/lib/ride-status';
+import { useToast } from '@/hooks/use-toast';
+import { FareSummary } from '@/components/passenger/fare-summary';
+import { RideAmount, RideRow, RideStatusBadge } from '@/components/passenger/ride-row';
+import { SeatSelector } from '@/components/passenger/seat-selector';
+import { ZoneSelect } from '@/components/passenger/zone-select';
 
-function calculateFarePreview(pickup: string, dest: string, seats: number = 1) {
-  if (pickup === dest) return null;
-  const fare = fareBreakdown(pickup, dest, seats);
-  return { ...fare, baseFare: fare.baseFare / 100, distanceCharge: fare.distanceCharge / 100,
-    farePerSeat: fare.farePerSeat / 100, total: fare.total / 100 };
-}
+const STEPS = ['REQUESTED', 'ACCEPTED', 'DRIVER_ARRIVED', 'STARTED', 'COMPLETED'] as const;
+const BOOKING_STORAGE_KEY = 'oitesla:passenger:booking';
+const SIDEBAR_RIDE_LIMIT = 3;
+const RECENT_RIDE_LIMIT = 3;
+const ACTIVE_RIDE_POLL_MS = 2000;
+const FARE_DEBOUNCE_MS = 250;
 
-// Custom Searchable Dropdown component replacing Pill grids
-function SearchableRouteSelect({ value, onChange, options, placeholder }: { value: string, onChange: (v: string) => void, options: string[], placeholder: string }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
+type StoredBooking = { pickup: string; destination: string; seats: number };
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+type RideStats = { spentToday: number; spentThisMonth: number };
 
-  const filtered = options.filter(o => o.toLowerCase().includes(query.toLowerCase()));
+const FOCUS_RING =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0D0B]';
 
-  return (
-    <div className="relative w-full" ref={dropdownRef}>
-      <div 
-        className="flex items-center w-full bg-[#1E2621] border border-[#2C3831] p-3.5 rounded-xl cursor-pointer hover:bg-[#1A211D] transition-colors"
-        onClick={() => { setOpen(!open); setQuery(""); }}
-      >
-        <span className={`flex-1 text-sm font-semibold ${value ? 'text-[#F3F4F6]' : 'text-[#6B7280]'}`}>{value || placeholder}</span>
-        <ChevronDown className="w-4 h-4 text-[#6B7280]" />
-      </div>
-      
-      {open && (
-        <div className="absolute top-[110%] left-0 w-full bg-[#0A0D0B] border border-[#2C3831] rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-50 overflow-hidden backdrop-blur-2xl">
-          <div className="p-3 border-b border-[#2C3831] flex items-center bg-[#0A0D0B]">
-            <Search className="w-4 h-4 text-[#6B7280] mr-2" />
-            <input 
-              type="text" 
-              className="bg-transparent border-none outline-none text-sm text-[#F3F4F6] w-full placeholder-gray-600"
-              placeholder="Search zone..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="max-h-48 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-[#2C3831]">
-            {filtered.length > 0 ? filtered.map(opt => (
-              <div 
-                key={opt}
-                className="px-4 py-3 text-sm hover:bg-[#1E2621] hover:text-[#F3F4F6] rounded-lg cursor-pointer text-[#D1D5DB] transition-colors flex items-center justify-between"
-                onClick={() => { onChange(opt); setOpen(false); }}
-              >
-                {opt}
-                {value === opt && <Check className="w-4 h-4 text-[#10B981]" />}
-              </div>
-            )) : (
-              <div className="px-4 py-3 text-sm text-[#6B7280] text-center">No zones found</div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+function readStoredBooking(): Partial<StoredBooking> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(BOOKING_STORAGE_KEY) || 'null');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 
 export default function PassengerDashboard() {
-  const [user, setUser] = useState<any>(null);
-  const [stats, setStats] = useState({ spentToday: 0, spentThisMonth: 0 });
-  const [fullHistory, setFullHistory] = useState<any[]>([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeRide, setActiveRide] = useState<any>(null);
-  const previousStatusRef = useRef<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [requesting, setRequesting] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
-  const [completedRideToRate, setCompletedRideToRate] = useState<any>(null);
-  const [rating, setRating] = useState(0);
-  const [ratingComment, setRatingComment] = useState('');
-  const [submittingRating, setSubmittingRating] = useState(false);
-  
-  const [pickup, setPickup] = useState(ZONES[0]);
-  const [destination, setDestination] = useState(ZONES[1]);
-  const [seats, setSeats] = useState(1);
-  const [paymentMethod] = useState('CASH');
-  
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [farePreview, setFarePreview] = useState<any>(null);
-  
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    setIsCalculating(true);
-    const timer = setTimeout(() => {
-      setFarePreview(calculateFarePreview(pickup, destination, seats));
-      setIsCalculating(false);
-    }, 400); // 400ms simulate network delay
-    return () => clearTimeout(timer);
-  }, [pickup, destination, seats]);
+  const [user, setUser] = useState<StoredUser | null>(null);
+  const [ready, setReady] = useState(false);
 
-  const checkRecentCompletedRide = async (token: string) => {
-    try {
-      const res = await fetch(`/api/passenger/rides/history`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const history = await res.json();
-        if (history.length > 0) {
-          const lastRide = history[0];
-          if (lastRide.status === 'COMPLETED' && !lastRide.rating) {
-            setCompletedRideToRate(lastRide);
-          }
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const [zones, setZones] = useState<string[]>([]);
+  const [zonesLoading, setZonesLoading] = useState(true);
+  const [zonesError, setZonesError] = useState<string | null>(null);
 
-  const fetchActiveRide = async (token: string) => {
-    try {
-      const res = await fetch(`/api/passenger/rides/active`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        router.push('/login');
-        return;
-      }
-      if (res.ok) {
-        const data = await res.json();
-        
-        if (!data && previousStatusRef.current && ['STARTED', 'DRIVER_ARRIVED', 'ACCEPTED'].includes(previousStatusRef.current)) {
-          toast({ title: "Trip Completed! 🎉", description: "You have arrived at your destination." });
-          checkRecentCompletedRide(token);
-        }
-        
-        setActiveRide(data);
-        if (data && previousStatusRef.current && previousStatusRef.current !== data.status) {
-          const status = data.status;
-          if (status === 'ACCEPTED') toast({ title: "Ride Accepted! 🚙", description: "A driver is on the way to your pickup location." });
-          else if (status === 'DRIVER_ARRIVED') toast({ title: "Driver Arrived! 📍", description: "Please meet your driver at the pickup point." });
-          else if (status === 'STARTED') toast({ title: "Trip Started! 🛣️", description: "You are now on your way to the destination." });
-          else if (status === 'COMPLETED') toast({ title: "Trip Completed! 🎉", description: "You have arrived at your destination." });
-        }
-        previousStatusRef.current = data ? data.status : null;
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [pickup, setPickup] = useState('');
+  const [destination, setDestination] = useState('');
+  const [seats, setSeats] = useState(1);
 
-  const submitRating = async () => {
-    if (!completedRideToRate || rating === 0) return;
-    setSubmittingRating(true);
-    try {
-      const res = await fetch(`/api/passenger/rides/${completedRideToRate.id}/rate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
-        body: JSON.stringify({ rating, comment: ratingComment })
-      });
-      if (res.ok) {
-        toast({ title: "Thanks for your feedback! ⭐", description: "Your rating has been submitted." });
-        setCompletedRideToRate(null);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setSubmittingRating(false);
-    }
-  };
+  const [fare, setFare] = useState<FareQuote | null>(null);
+  const [fareLoading, setFareLoading] = useState(false);
+  const [fareError, setFareError] = useState<string | null>(null);
+
+  const [requesting, setRequesting] = useState(false);
+  const bookingInFlight = useRef(false);
+
+  const [activeRide, setActiveRide] = useState<PassengerRide | null>(null);
+  const [activeLoading, setActiveLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+
+  const [history, setHistory] = useState<PassengerRide[]>([]);
+  const [stats, setStats] = useState<RideStats>({ spentToday: 0, spentThisMonth: 0 });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [ratingRide, setRatingRide] = useState<PassengerRide | null>(null);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
+
+  const previousStatus = useRef<string | null>(null);
+  const tokenRef = useRef<string | null>(null);
+
+  const sameZone = Boolean(pickup && destination && pickup === destination);
+
+  /* ---------------------------------------------------------------- session */
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
-    
+    const storedUser = readStoredUser();
     if (!token || !storedUser) {
-      router.push('/login');
+      router.replace('/login');
       return;
     }
-    
-    const parsedUser = readStoredUser();
-    if (!parsedUser) { router.push('/login'); return; }
-    if (parsedUser.role !== 'PASSENGER') {
-      router.push('/driver/dashboard');
+    if (storedUser.role !== 'PASSENGER') {
+      router.replace('/driver/dashboard');
       return;
     }
-    
-    setUser(parsedUser);
-        
-    fetch('/api/passenger/stats', { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => res.json()).then(data => { if(!data.error) setStats(data); });
-      
-    fetch('/api/passenger/rides/history', { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => res.json()).then(data => { if(Array.isArray(data)) setFullHistory(data); });
-    fetchActiveRide(token);
-    checkRecentCompletedRide(token);
+    tokenRef.current = token;
+    setUser(storedUser);
 
-    const interval = setInterval(() => {
-      fetchActiveRide(token);
-    }, 1000);
-    return () => clearInterval(interval);
+    const remembered = readStoredBooking();
+    if (typeof remembered.pickup === 'string') setPickup(remembered.pickup);
+    if (typeof remembered.destination === 'string') setDestination(remembered.destination);
+    if (Number.isInteger(remembered.seats) && (remembered.seats as number) >= 1 && (remembered.seats as number) <= 3) {
+      setSeats(remembered.seats as number);
+    }
+    setReady(true);
   }, [router]);
 
-  const requestRide = async () => {
-    if (pickup === destination) return;
-    
-    setRequesting(true);
-    const token = localStorage.getItem('token');
-    
+  const signOut = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem(BOOKING_STORAGE_KEY);
+    router.replace('/login');
+  }, [router]);
+
+  const signInExpired = useCallback(() => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    router.replace('/login');
+  }, [router]);
+
+  /* ------------------------------------------------------------------ zones */
+
+  const loadZones = useCallback(async (signal?: AbortSignal) => {
+    setZonesLoading(true);
+    setZonesError(null);
     try {
-      const res = await fetch(`/api/rides`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pickup_zone: pickup, destination_zone: destination, seats_requested: seats, payment_method: paymentMethod })
+      const res = await fetch('/api/rides/zones', {
+        headers: { Authorization: `Bearer ${tokenRef.current ?? ''}` },
+        signal,
       });
-      
+      if (res.status === 401 || res.status === 403) { signInExpired(); return; }
       const data = await readApiResponse(res);
-      if (!res.ok) throw new Error(data.error || 'Failed to request ride');
-      
-      toast({ title: "Request Sent", description: "Finding the best route for you..." });
-      fetchActiveRide(token as string);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      if (!res.ok) throw new Error(data.error || 'Unable to load zones.');
+      if (!Array.isArray(data.zones) || data.zones.length === 0) {
+        throw new Error('No serviceable zones are available right now.');
+      }
+      setZones(data.zones as string[]);
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') return;
+      setZones([]);
+      setZonesError((error as Error).message || 'Unable to load zones.');
     } finally {
+      if (!signal?.aborted) setZonesLoading(false);
+    }
+  }, [signInExpired]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const controller = new AbortController();
+    loadZones(controller.signal);
+    return () => controller.abort();
+  }, [ready, loadZones]);
+
+  // Seed sensible defaults once zones arrive, and never leave pickup === destination.
+  useEffect(() => {
+    if (!zones.length) return;
+    setPickup((current) => (zones.includes(current) ? current : zones[0]));
+    setDestination((current) =>
+      zones.includes(current) && current !== zones[0] ? current : zones.find((zone) => zone !== zones[0]) ?? zones[0],
+    );
+  }, [zones]);
+
+  // Remember the last booking so the form reopens where the passenger left off.
+  useEffect(() => {
+    if (!ready || !pickup || !destination) return;
+    localStorage.setItem(BOOKING_STORAGE_KEY, JSON.stringify({ pickup, destination, seats }));
+  }, [ready, pickup, destination, seats]);
+
+  /* ------------------------------------------------------------------- fare */
+
+  const refreshFare = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token) return;
+    setFareLoading(true);
+    setFareError(null);
+    try {
+      const query = new URLSearchParams({ pickup, destination, seats: String(seats) });
+      const res = await fetch(`/api/rides/estimate?${query}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await readApiResponse(res);
+      if (!res.ok) throw new Error(data.error || 'Unable to calculate the fare.');
+      setFare(data.fare as FareQuote);
+    } catch (error) {
+      setFare(null);
+      setFareError((error as Error).message || 'Unable to calculate the fare.');
+    } finally {
+      setFareLoading(false);
+    }
+  }, [pickup, destination, seats]);
+
+  useEffect(() => {
+    if (!ready || zonesLoading || !pickup || !destination) return;
+    if (pickup === destination) {
+      setFare(null);
+      setFareError(null);
+      setFareLoading(false);
+      return;
+    }
+    const timer = setTimeout(() => { refreshFare(); }, FARE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [ready, zonesLoading, pickup, destination, seats, refreshFare]);
+
+  /* -------------------------------------------------------------- ride data */
+
+  const loadHistory = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token) return;
+    try {
+      const res = await fetch('/api/passenger/rides/history', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) { signInExpired(); return; }
+      if (res.ok) {
+        const data = await readApiResponse(res);
+        if (Array.isArray(data)) setHistory(data as PassengerRide[]);
+      }
+    } catch {
+      // The dashboard stays usable; the empty state covers a failed history read.
+    }
+  }, [signInExpired]);
+
+  const loadStats = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token) return;
+    try {
+      const res = await fetch('/api/passenger/stats', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) { signInExpired(); return; }
+      if (res.ok) {
+        const data = await readApiResponse(res);
+        if (typeof data.spentToday === 'number' && typeof data.spentThisMonth === 'number') {
+          setStats({ spentToday: data.spentToday, spentThisMonth: data.spentThisMonth });
+        }
+      }
+    } catch {
+      // Non-fatal: the cards simply stay at zero.
+    }
+  }, [signInExpired]);
+
+  const maybePromptForRating = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token) return;
+    try {
+      const res = await fetch('/api/passenger/rides/history', { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const data = await readApiResponse(res);
+      const latest = Array.isArray(data) ? (data[0] as PassengerRide | undefined) : undefined;
+      if (latest && latest.status === 'COMPLETED' && !latest.rating) {
+        setRatingRide(latest);
+        setRating(0);
+        setRatingComment('');
+      }
+    } catch {
+      // A missed rating prompt is not worth surfacing as an error.
+    }
+  }, []);
+
+  const fetchActiveRide = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token) return;
+    try {
+      const res = await fetch('/api/passenger/rides/active', { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401 || res.status === 403) { signInExpired(); return; }
+      if (!res.ok) return;
+
+      const data = await readApiResponse(res);
+      const ride = (data ?? null) as PassengerRide | null;
+      const status = ride?.status ?? null;
+
+      if (!ride && previousStatus.current) {
+        if (previousStatus.current === 'COMPLETED') {
+          toast({ title: 'Trip completed', description: 'You have arrived at your destination.' });
+        } else {
+          toast({ title: 'Ride closed', description: 'Your ride is no longer active.' });
+        }
+        loadHistory();
+        loadStats();
+        maybePromptForRating();
+      } else if (ride && previousStatus.current && previousStatus.current !== status) {
+        if (status === 'ACCEPTED') toast({ title: 'Ride accepted', description: 'A driver is on the way to your pickup.' });
+        else if (status === 'DRIVER_ARRIVED') toast({ title: 'Driver arrived', description: 'Please meet your driver at the pickup point.' });
+        else if (status === 'STARTED') toast({ title: 'Trip started', description: 'You are on your way.' });
+      }
+
+      previousStatus.current = status;
+      setActiveRide(ride);
+    } catch {
+      // A dropped poll is retried on the next tick.
+    } finally {
+      setActiveLoading(false);
+    }
+  }, [signInExpired, toast, loadHistory, loadStats, maybePromptForRating]);
+
+  useEffect(() => {
+    if (!ready) return;
+    loadHistory();
+    loadStats();
+    fetchActiveRide();
+    maybePromptForRating();
+
+    const interval = setInterval(fetchActiveRide, ACTIVE_RIDE_POLL_MS);
+    return () => clearInterval(interval);
+  }, [ready, loadHistory, loadStats, fetchActiveRide, maybePromptForRating]);
+
+  /* ---------------------------------------------------------------- actions */
+
+  function swapZones() {
+    setPickup(destination);
+    setDestination(pickup);
+  }
+
+  const requestRide = async () => {
+    if (bookingInFlight.current || sameZone || !fare) return;
+    // Guards against a second click landing before React re-renders the disabled button.
+    bookingInFlight.current = true;
+    setRequesting(true);
+    const token = tokenRef.current;
+    try {
+      const res = await fetch('/api/rides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ pickup_zone: pickup, destination_zone: destination, seats_requested: seats }),
+      });
+      const data = await readApiResponse(res);
+      if (!res.ok) throw new Error(data.error || 'We could not book that ride. Please try again.');
+
+      previousStatus.current = 'REQUESTED';
+      setActiveRide(data.ride as PassengerRide);
+      toast({ title: 'Ride requested', description: 'Finding the best pooled route for you.' });
+      loadStats();
+    } catch (error) {
+      toast({ title: 'Could not book ride', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      bookingInFlight.current = false;
       setRequesting(false);
     }
   };
 
   const cancelRide = async () => {
-    if (!activeRide) return;
+    if (!activeRide || cancelling) return;
     setCancelling(true);
-    const token = localStorage.getItem('token');
+    const token = tokenRef.current;
     try {
       const res = await fetch(`/api/rides/${activeRide.id}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: 'CANCELLED' })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ status: 'CANCELLED' }),
       });
-      if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        router.push('/login');
-        return;
+      if (res.status === 401 || res.status === 403) { signInExpired(); return; }
+      if (!res.ok) {
+        const data = await readApiResponse(res);
+        throw new Error(data.error || 'Could not cancel the ride.');
       }
-      if (res.ok) {
-        setActiveRide(null);
-      } else {
-        const data = await res.json();
-        toast({ title: "Failed to cancel", description: data.error, variant: "destructive" });
-      }
-    } catch (e) {
-      toast({ title: "Error", description: "An unexpected error occurred", variant: "destructive" });
+      previousStatus.current = null;
+      setActiveRide(null);
+      toast({ title: 'Ride cancelled', description: 'No charge for a cancelled ride.' });
+      loadHistory();
+      loadStats();
+    } catch (error) {
+      toast({ title: 'Could not cancel', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setCancelling(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/login');
+  const submitRating = async () => {
+    if (!ratingRide || rating === 0 || submittingRating) return;
+    setSubmittingRating(true);
+    try {
+      const res = await fetch(`/api/passenger/rides/${ratingRide.id}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenRef.current ?? ''}` },
+        body: JSON.stringify({ rating, comment: ratingComment }),
+      });
+      if (!res.ok) throw new Error('Could not submit your rating.');
+      toast({ title: 'Thanks for your feedback' });
+      setRatingRide(null);
+      loadHistory();
+    } catch (error) {
+      toast({ title: 'Rating not saved', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
-  if (!user || loading) {
+  /* ------------------------------------------------------------------ view */
+
+  const name = displayName(user?.name);
+  const recentRides = useMemo(() => history.slice(0, RECENT_RIDE_LIMIT), [history]);
+  const sidebarRides = useMemo(() => history.slice(0, SIDEBAR_RIDE_LIMIT), [history]);
+  const showBooking = !activeRide && !activeLoading;
+  const canCancel = Boolean(
+    activeRide && ['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED'].includes(activeRide.status),
+  );
+  const stepIndex = activeRide ? Math.max(0, STEPS.indexOf(activeRide.status as typeof STEPS[number])) : 0;
+
+  if (!ready || activeLoading) {
     return (
-      <div className="min-h-screen bg-[#0A0D0B] flex flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 text-[#10B981] animate-spin mb-4" />
-        <div className="text-[#A1A1AA] font-medium">Loading your dashboard...</div>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0A0D0B]">
+        <Loader2 className="mb-4 h-8 w-8 animate-spin text-[#10B981]" aria-hidden="true" />
+        <p className="font-medium text-[#A1A1AA]">Loading your dashboard…</p>
       </div>
     );
   }
 
-  const isRideActive = activeRide && activeRide.status !== 'CANCELLED';
-  const canCancel = activeRide && ['REQUESTED', 'MATCHED', 'ACCEPTED', 'DRIVER_ARRIVED'].includes(activeRide.status);
-  
-  let currentStepIndex = 0;
-  if (activeRide) {
-    currentStepIndex = STEPS.indexOf(activeRide.status);
-    if (currentStepIndex === -1) currentStepIndex = 0; 
-  }
+  const sidebarContent = (
+    <>
+      <div className="mb-8 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-xl font-bold text-white">{name}</p>
+          <p className="mt-0.5 truncate text-sm text-[#10B981]">Passenger</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close navigation"
+          className={`shrink-0 rounded-full border border-[#2C3831] bg-[#131815] p-2 text-[#A1A1AA] transition-colors hover:text-white ${FOCUS_RING}`}
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+
+      <section aria-labelledby="spend-heading" className="mb-8">
+        <h2 id="spend-heading" className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#8B93A0]">
+          Total spent
+        </h2>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-2xl border border-[#2C3831] bg-[#131815] p-4">
+            <span className="text-sm text-[#A1A1AA]">Today</span>
+            <span className="text-lg font-bold tabular-nums text-white">{formatPoysha(stats.spentToday)}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-2xl border border-[#2C3831] bg-[#131815] p-4">
+            <span className="text-sm text-[#A1A1AA]">This month</span>
+            <span className="text-lg font-bold tabular-nums text-white">{formatPoysha(stats.spentThisMonth)}</span>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="sidebar-history-heading" className="min-h-0 flex-1">
+        <h2 id="sidebar-history-heading" className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#8B93A0]">
+          Recent rides
+        </h2>
+        {sidebarRides.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-[#3F4A44] p-5 text-center text-sm text-[#8B93A0]">
+            No rides yet. Your bookings will appear here.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {sidebarRides.map((ride) => (
+              <li key={ride.id}><RideRow ride={ride} compact /></li>
+            ))}
+          </ul>
+        )}
+        <Link
+          href="/passenger/history"
+          onClick={() => setSidebarOpen(false)}
+          className={`mt-4 inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-[#F3F4F6] transition-colors hover:text-[#10B981] ${FOCUS_RING}`}
+        >
+          View all rides
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </section>
+    </>
+  );
 
   return (
-    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-32 sm:pb-12 relative">
+    <div className="min-h-screen bg-[#0A0D0B] font-sans text-[#F3F4F6] selection:bg-[#10B981]/30">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-[#10B981] focus:px-4 focus:py-2 focus:font-semibold focus:text-[#022C22]"
+      >
+        Skip to main content
+      </a>
 
-      {/* Slide-over Sidebar */}
-      <div className={`fixed inset-0 z-50 transition-all duration-300 ${isSidebarOpen ? 'visible' : 'invisible'}`}>
-        {/* Backdrop */}
-        <div 
-          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}
-          onClick={() => setIsSidebarOpen(false)}
+      {/* Persistent sidebar from lg, drawer below it */}
+      <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'visible' : 'invisible'}`} aria-hidden={!sidebarOpen}>
+        <div
+          className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${sidebarOpen ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setSidebarOpen(false)}
         />
-        
-        {/* Drawer */}
-        <aside className={`absolute top-0 left-0 w-[320px] max-w-[85vw] h-full bg-[#0A0D0B] border-r border-[#2C3831] flex flex-col p-6 overflow-y-auto transition-transform duration-300 shadow-2xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-white">{user?.name}</h2>
-              <p className="text-sm text-[#10B981] capitalize">{user?.role?.toLowerCase()}</p>
-            </div>
-            <button onClick={() => setIsSidebarOpen(false)} className="p-2 bg-[#131815] rounded-full text-gray-400 hover:text-white transition-colors border border-[#2C3831]">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="space-y-3 mb-8">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Total Spent</h3>
-            <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4 flex justify-between items-center">
-              <span className="text-sm text-gray-400">Today</span>
-              <span className="text-lg font-bold text-white">৳{stats.spentToday.toFixed(2)}</span>
-            </div>
-            <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-4 flex justify-between items-center">
-              <span className="text-sm text-gray-400">This Month</span>
-              <span className="text-lg font-bold text-white">৳{stats.spentThisMonth.toFixed(2)}</span>
-            </div>
-          </div>
-
-          <div className="flex-1">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Ride History</h3>
-            <div className="space-y-3">
-              {fullHistory.length === 0 ? (
-                <p className="text-sm text-gray-500">No rides yet.</p>
-              ) : (
-                fullHistory.map((ride, idx) => (
-                  <div key={idx} className="bg-[#131815] border border-[#2C3831] rounded-xl p-4 flex flex-col gap-2 hover:border-[#10B981]/50 transition-colors">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-400">{new Date(ride.requested_at).toLocaleDateString()}</span>
-                      <span className="font-semibold text-[#10B981]">৳{(ride.fare_amount / 100).toFixed(2)}</span>
-                    </div>
-                    <div className="text-sm font-medium text-white truncate">{ride.pickup_zone} → {ride.destination_zone}</div>
-                    <div className="text-xs text-gray-500 capitalize">{ride.status.toLowerCase().replace('_', ' ')}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+        <aside
+          aria-label="Passenger navigation"
+          className={`absolute left-0 top-0 flex h-full w-[320px] max-w-[85vw] flex-col overflow-y-auto overscroll-contain border-r border-[#2C3831] bg-[#0A0D0B] p-6 shadow-2xl transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        >
+          {sidebarContent}
         </aside>
       </div>
 
-      
-      {/* Rating Popup */}
-      {completedRideToRate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#131815] border border-[#2C3831] rounded-3xl p-6 w-full max-w-sm shadow-2xl relative">
-            <h3 className="text-xl font-bold text-[#F3F4F6] text-center mb-2">Rate Your Trip</h3>
-            <p className="text-sm text-[#A1A1AA] text-center mb-6">How was your ride from {completedRideToRate.pickup_zone}?</p>
-            
-            <div className="flex justify-center gap-2 mb-6">
-              {[1, 2, 3, 4, 5].map(star => (
-                <button 
-                  key={star} 
+      <aside className="fixed left-0 top-0 z-30 hidden h-screen w-[320px] flex-col overflow-y-auto overscroll-contain border-r border-[#2C3831] bg-[#0A0D0B] p-6 lg:flex">
+        {sidebarContent}
+      </aside>
+
+      {ratingRide && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rating-title"
+            className="relative w-full max-w-sm rounded-3xl border border-[#2C3831] bg-[#131815] p-6 shadow-2xl"
+          >
+            <h2 id="rating-title" className="mb-2 text-center text-xl font-bold text-[#F3F4F6]">
+              Rate your trip
+            </h2>
+            <p className="mb-6 text-center text-sm text-[#A1A1AA]">
+              How was your ride from {ratingRide.pickup_zone}?
+            </p>
+
+            <div role="radiogroup" aria-label="Rating out of 5" className="mb-6 flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  role="radio"
+                  aria-checked={rating === star}
+                  aria-label={`${star} star${star === 1 ? '' : 's'}`}
                   onClick={() => setRating(star)}
-                  className={`text-4xl transition-transform hover:scale-110 ${rating >= star ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]' : 'text-[#2C3831]'}`}
+                  className={`text-4xl transition-transform hover:scale-110 ${FOCUS_RING} ${
+                    rating >= star ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]' : 'text-[#3F4A44]'
+                  }`}
                 >
-                  ★
+                  <span aria-hidden="true">★</span>
                 </button>
               ))}
             </div>
 
-            <textarea 
-              placeholder="Leave a comment (optional)..."
+            <label htmlFor="rating-comment" className="sr-only">Comment (optional)</label>
+            <textarea
+              id="rating-comment"
+              placeholder="Leave a comment (optional)"
               value={ratingComment}
-              onChange={e => setRatingComment(e.target.value)}
-              className="w-full bg-[#0A0D0B] border border-[#2C3831] rounded-xl p-3 text-sm text-[#F3F4F6] placeholder-[#71717A] focus:outline-none focus:border-[#10B981] mb-6 resize-none h-24"
+              onChange={(event) => setRatingComment(event.target.value)}
+              className="mb-6 h-24 w-full resize-none rounded-xl border border-[#2C3831] bg-[#0A0D0B] p-3 text-sm text-[#F3F4F6] placeholder:text-[#8B93A0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981]"
             />
-            
+
             <div className="flex gap-3">
-              <button 
-                onClick={() => setCompletedRideToRate(null)}
-                className="flex-1 py-3 rounded-xl font-semibold text-[#A1A1AA] hover:text-[#F3F4F6] hover:bg-[#1E2621] transition-colors"
+              <button
+                type="button"
+                onClick={() => setRatingRide(null)}
+                className={`flex-1 rounded-xl py-3 font-semibold text-[#A1A1AA] transition-colors hover:bg-[#1E2621] hover:text-[#F3F4F6] ${FOCUS_RING}`}
               >
                 Skip
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={submitRating}
                 disabled={rating === 0 || submittingRating}
-                className="flex-1 py-3 rounded-xl bg-[#10B981] text-[#022C22] font-semibold transition-all hover:bg-[#059669] disabled:opacity-50 flex justify-center items-center gap-2"
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#10B981] py-3 font-semibold text-[#022C22] transition-colors hover:bg-[#059669] disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`}
               >
-                {submittingRating && <Loader2 className="w-4 h-4 animate-spin" />}
+                {submittingRating && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 Submit
               </button>
             </div>
           </div>
         </div>
       )}
-      
-      {/* Top Header */}
-      <header className="sticky top-0 z-40 w-full bg-[#0A0D0B]/90 backdrop-blur-xl border-b border-[#2C3831]">
-        <div className="max-w-screen-xl mx-auto flex h-16 items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#F3F4F6]" />
-            <span className="font-bold text-lg tracking-tight">OiTesla</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-[#A1A1AA] hidden sm:block">{user.name}</span>
-            <button onClick={logout} className="p-2 rounded-full hover:bg-[#131815] transition-colors text-[#A1A1AA] hover:text-[#F3F4F6]">
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
 
-      <main className="max-w-lg mx-auto p-6 mt-4 space-y-6">
-        
-        {!isRideActive ? (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-5xl sm:text-6xl font-semibold tracking-tight text-[#F3F4F6] mb-8 leading-tight">Where to?</h1>
-            
-            {/* Request Card */}
-            <div className="bg-[#131815] border border-[#2C3831] rounded-3xl p-6 shadow-2xl backdrop-blur-sm">
-              <div className="space-y-4 relative z-20">
-                <div className="flex gap-4">
-                  <div className="flex-1 space-y-1">
-                    <label className="text-xs font-semibold text-[#F3F4F6] ml-1">Pickup zone</label>
-                    <SearchableRouteSelect value={pickup} onChange={setPickup} options={ZONES} placeholder="Pickup Location" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <label className="text-xs font-semibold text-[#F3F4F6] ml-1">Destination zone</label>
-                    <SearchableRouteSelect value={destination} onChange={setDestination} options={ZONES} placeholder="Destination" />
-                  </div>
-                </div>
-                
-                <button 
-                  onClick={() => { const temp = pickup; setPickup(destination); setDestination(temp); }}
-                  className="flex items-center gap-2 text-sm font-medium text-[#F3F4F6] hover:text-[#10B981] transition-colors py-1 ml-1"
-                >
-                  <ArrowRightLeft className="w-4 h-4" /> Swap pickup and destination
-                </button>
+      <div className="lg:pl-[320px]">
+        <header className="sticky top-0 z-40 w-full border-b border-[#2C3831] bg-[#0A0D0B]/90 backdrop-blur-xl">
+          <div className="mx-auto flex h-16 w-full max-w-3xl items-center justify-between gap-4 px-4 sm:px-6">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open navigation"
+                aria-expanded={sidebarOpen}
+                className={`-ml-2 rounded-full p-2 text-[#A1A1AA] transition-colors hover:bg-[#131815] hover:text-[#F3F4F6] lg:hidden ${FOCUS_RING}`}
+              >
+                <Menu className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#F3F4F6]" aria-hidden="true" />
+                <span className="text-lg font-bold tracking-tight">OiTesla</span>
               </div>
+            </div>
 
-              <div className="mt-8">
-                <div className="text-sm font-semibold text-[#F3F4F6] mb-3 ml-1">Seats</div>
-                <div className="flex gap-3">
-                  {[1, 2, 3].map(num => (
+            <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+              <span className="hidden max-w-[12rem] truncate text-sm font-medium text-[#A1A1AA] sm:block">
+                {name}
+              </span>
+              <button
+                type="button"
+                onClick={signOut}
+                title="Log out"
+                aria-label="Log out"
+                className={`rounded-full p-2 text-[#A1A1AA] transition-colors hover:bg-[#131815] hover:text-[#F3F4F6] ${FOCUS_RING}`}
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main id="main-content" className="mx-auto w-full max-w-lg space-y-6 px-4 py-8 sm:px-6">
+          {showBooking ? (
+            <>
+              <h1 className="text-4xl font-semibold leading-tight tracking-tight text-[#F3F4F6] sm:text-5xl">
+                Where to?
+              </h1>
+
+              <section
+                aria-labelledby="booking-heading"
+                className="relative rounded-3xl border border-[#2C3831] bg-[#131815] p-6 shadow-2xl"
+              >
+                <h2 id="booking-heading" className="sr-only">Book a ride</h2>
+
+                {zonesError ? (
+                  <div className="space-y-4" role="alert">
+                    <p className="flex items-start gap-2 text-sm font-medium text-red-200">
+                      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                      {zonesError}
+                    </p>
                     <button
-                      key={num}
-                      onClick={() => setSeats(num)}
-                      className={`flex-1 py-3 rounded-xl font-bold transition-all border ${
-                        seats === num 
-                          ? 'bg-[#10B981] text-[#022C22] border-[#10B981] shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
-                          : 'bg-[#0A0D0B] text-[#F3F4F6] border-[#2C3831] hover:border-[#10B981]/50'
-                      }`}
+                      type="button"
+                      onClick={() => loadZones()}
+                      className={`inline-flex items-center gap-2 rounded-xl border border-[#2C3831] bg-[#0A0D0B] px-4 py-2.5 text-sm font-semibold text-[#F3F4F6] transition-colors hover:border-[#10B981]/60 ${FOCUS_RING}`}
                     >
-                      {num}
+                      Retry loading zones
                     </button>
-                  ))}
-                </div>
-                <p className="text-xs text-[#A1A1AA] mt-3 ml-1">Select up to 3 seats for yourself and your companions.</p>
-              </div>
-
-              {/* Fare Preview Box */}
-              <div className="mt-8 border-t border-[#2C3831] pt-6 min-h-[220px] relative z-0 transition-all">
-                {isCalculating ? (
-                  <div className="flex flex-col items-center justify-center h-[200px] animate-pulse space-y-3">
-                    <div className="h-6 w-24 bg-white/10 rounded-md" />
-                    <div className="h-4 w-40 bg-[#0A0D0B] border border-[#2C3831] rounded-md" />
                   </div>
-                ) : pickup === destination ? (
-                  <div className="flex items-center justify-center h-[200px] text-red-400 gap-2">
-                    <AlertCircle className="w-5 h-5" />
-                    <span className="text-sm font-medium">Pickup and destination must differ</span>
-                  </div>
-                ) : farePreview ? (
+                ) : (
                   <div className="space-y-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[#F3F4F6] font-bold text-lg">Estimated fare</span>
-                      <span className="text-[#10B981] font-bold text-xl">৳{(farePreview.total).toFixed(2)}</span>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <ZoneSelect
+                        label="Pickup zone"
+                        value={pickup}
+                        onChange={setPickup}
+                        options={zones}
+                        blockedZone={destination}
+                        placeholder="Pickup location"
+                        loading={zonesLoading}
+                      />
+                      <ZoneSelect
+                        label="Destination zone"
+                        value={destination}
+                        onChange={setDestination}
+                        options={zones}
+                        blockedZone={pickup}
+                        placeholder="Destination"
+                        loading={zonesLoading}
+                      />
                     </div>
-                    
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between text-[#A1A1AA]">
-                        <span>Base fare</span>
-                        <span className="text-[#F3F4F6]">৳{(farePreview.baseFare).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-[#A1A1AA]">
-                        <span>Distance charge</span>
-                        <span className="text-[#F3F4F6]">৳{(farePreview.distanceCharge).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-[#A1A1AA]">
-                        <span>Fare per seat</span>
-                        <span className="text-[#F3F4F6]">৳{(farePreview.farePerSeat || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-[#A1A1AA] border-t border-[#2C3831] pt-3">
-                        <span>Final fare</span>
-                        <span className="text-[#F3F4F6]">৳{(farePreview.farePerSeat || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-[#F3F4F6] pt-1 mt-1">
-                        <span>Estimated total (BDT)</span>
-                        <span className="text-[#10B981]">৳{(farePreview.total).toFixed(2)}</span>
-                      </div>
-                    </div>
-                    
-                    <p className="text-xs text-[#A1A1AA] mt-6 leading-relaxed">
-                      Fares displayed are per seat. Enjoy a premium shared ride experience while keeping your travel costs low.
+
+                    <button
+                      type="button"
+                      onClick={swapZones}
+                      disabled={!pickup || !destination}
+                      className={`ml-1 inline-flex items-center gap-2 rounded-lg py-1 text-sm font-medium text-[#F3F4F6] transition-colors hover:text-[#10B981] disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`}
+                    >
+                      <ArrowRightLeft className="h-4 w-4" aria-hidden="true" />
+                      Swap pickup and destination
+                    </button>
+
+                    {sameZone && (
+                      <p role="alert" className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-200">
+                        <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        Pickup and destination must be different zones.
+                      </p>
+                    )}
+
+                    <SeatSelector name="seats" value={seats} onChange={setSeats} describedBy="seats-help" />
+                    <p id="seats-help" className="ml-1 text-xs text-[#A1A1AA]">
+                      Up to 3 seats for you and your companions.
                     </p>
                   </div>
-                ) : null}
-              </div>
-            </div>
-            
-            {/* Recent Rides Glance */}
-            <div className="pt-4 pb-12 sm:pb-0 relative z-0">
-              <div className="flex items-center justify-between mb-4 px-2">
-                <h3 className="font-semibold text-lg">Recent Rides</h3>
-                <Link href="/passenger/history" className="text-sm font-medium text-[#F3F4F6] hover:text-[#A1A1AA] transition-colors flex items-center gap-1">
-                  History <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-              <div className="bg-[#131815] border border-[#2C3831] rounded-2xl p-5 flex items-center justify-between hover:bg-[#1A211D] transition-colors cursor-pointer">
-                 <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-full bg-[#0A0D0B] border border-[#2C3831] flex items-center justify-center">
-                     <Clock className="w-5 h-5 text-[#A1A1AA]" />
-                   </div>
-                   <div>
-                     <div className="font-medium text-sm text-[#F3F4F6]">To Gulshan</div>
-                     <div className="text-xs text-[#6B7280] mt-0.5">Completed • Oct 12</div>
-                   </div>
-                 </div>
-                 <div className="font-semibold text-sm text-[#F3F4F6]">৳45.00</div>
-              </div>
-            </div>
+                )}
 
-            {/* Sticky Bottom Bar for Action */}
-            <div className="fixed bottom-0 left-0 w-full p-4 sm:p-6 bg-gradient-to-t from-[#05050A] via-[#05050A]/90 to-transparent z-40">
-              <div className="max-w-lg mx-auto">
-                <button
-                  onClick={requestRide}
-                  disabled={requesting || pickup === destination || isCalculating}
-                  className="w-full h-14 rounded-xl bg-[#F0FDF4] text-[#022C22] font-semibold text-lg transition-all duration-300 hover:bg-[#DCFCE7] disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {requesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Navigation className="w-5 h-5" />}
-                  Book ride
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* Active Ride Tracker View */
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-5xl sm:text-6xl font-semibold tracking-tight text-[#F3F4F6] mb-8 leading-tight">Your Ride</h1>
-            
-            <div className="bg-[#131815] border border-[#2C3831] rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
-              {/* Route Summary */}
-              <div className="flex items-center justify-between mb-8 pb-6 border-b border-[#2C3831]">
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-2.5 h-2.5 rounded-full bg-white" />
-                    <div className="w-0.5 h-6 bg-[#1E2621] rounded-full" />
-                    <div className="w-2.5 h-2.5 rounded-sm bg-[#10B981]" />
-                  </div>
-                  <div className="flex flex-col justify-between h-14">
-                    <div className="font-semibold text-sm text-[#F3F4F6]">{activeRide.pickup_zone}</div>
-                    <div className="font-semibold text-sm text-[#F3F4F6]">{activeRide.destination_zone}</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-[#6B7280] uppercase tracking-wider mb-1 font-semibold">Fare</div>
-                  <div className="text-xl font-bold text-[#F3F4F6]">৳{(activeRide.fare_amount / 100).toFixed(2)}</div>
-                </div>
-              </div>
+                {!zonesError && (
+                  <div className="mt-8 border-t border-[#2C3831] pt-6">
+                    <FareSummary
+                      fare={fare}
+                      loading={fareLoading || zonesLoading}
+                      error={fareError}
+                      onRetry={refreshFare}
+                    />
 
-              {/* Advanced Stepper */}
-              <div className="mb-16 px-10 sm:px-12">
-                <div className="relative h-5 flex items-center">
-                  <div className="absolute left-0 right-0 h-0.5 bg-[#1E2621]" />
-                  <div 
-                    className="absolute left-0 h-0.5 bg-[#10B981] transition-all duration-700 ease-in-out" 
-                    style={{ width: `${(currentStepIndex / (STEPS.length - 1)) * 100}%` }}
-                  />
-                  
-                  <div className="absolute left-0 right-0 flex justify-between">
-                    {STEPS.map((step, index) => {
-                      const isActive = index === currentStepIndex;
-                      const isPast = index <= currentStepIndex;
-                      
-                      return (
-                        <div key={step} className="relative flex justify-center w-0">
-                          <div className={`absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${
-                            isPast && !isActive ? 'bg-[#10B981]' : 
-                            isActive ? 'bg-[#10B981] shadow-[0_0_12px_rgba(16,185,129,0.8)]' : 'bg-[#131815] border border-[#2C3831]'
-                          }`}>
-                            {isActive && (
-                              <>
-                                <div className="absolute inset-0 rounded-full bg-[#10B981] animate-ping opacity-50" />
-                                <div className="relative w-2 h-2 rounded-full bg-[#0A0D0B] z-20" />
-                              </>
-                            )}
-                            {isPast && !isActive && <div className="w-2 h-2 rounded-full bg-white" />}
-                          </div>
-                          <span className={`absolute top-5 mt-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest w-24 transition-all duration-300 ${
-                            index === 0 ? 'left-[-10px] text-left' : 
-                            index === STEPS.length - 1 ? 'right-[-10px] text-right' : 
-                            'left-1/2 -translate-x-1/2 text-center'
-                          } ${
-                            isActive ? 'text-[#10B981] drop-shadow-[0_0_8px_rgba(16,185,129,0.8)] scale-105' : 
-                            isPast ? 'text-[#F3F4F6]' : 'text-[#3F3F46]'
-                          }`}>
-                            {step.replace('_', ' ')}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    <button
+                      type="button"
+                      onClick={requestRide}
+                      disabled={requesting || sameZone || !fare || fareLoading || Boolean(zonesError)}
+                      aria-busy={requesting}
+                      className={`mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#F0FDF4] text-lg font-semibold text-[#022C22] transition-colors hover:bg-[#DCFCE7] disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING} focus-visible:ring-offset-[#131815]`}
+                    >
+                      {requesting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                          Booking…
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="h-5 w-5" aria-hidden="true" />
+                          Book ride
+                        </>
+                      )}
+                    </button>
                   </div>
-                </div>
-              </div>
+                )}
+              </section>
 
-              {/* Driver / Match Info Area */}
-              <div className="mt-8 rounded-2xl bg-[#0A0D0B] border border-[#2C3831] p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#131815] border border-[#2C3831] flex items-center justify-center text-[#10B981]">
-                  {currentStepIndex >= 1 ? <Car className="w-6 h-6" /> : <Search className="w-6 h-6 animate-pulse" />}
-                </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-sm text-[#F3F4F6]">
-                    {currentStepIndex >= 1 ? 'Driver assigned' : 'Finding your driver...'}
-                  </div>
-                  <div className="text-xs text-[#A1A1AA] mt-1">
-                    {currentStepIndex >= 1 ? 'Tesla Model S • Dark Blue' : 'Matching you with a pooled ride'}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Cancel Button */}
-              {canCancel && (
-                <div className="mt-8 pt-6 border-t border-[#2C3831]">
-                  <button
-                    onClick={cancelRide}
-                    disabled={cancelling}
-                    className="w-full h-12 rounded-xl border border-red-500/30 bg-red-500/5 text-red-400 font-semibold text-sm transition-all hover:bg-red-500/10 hover:border-red-500/50 flex items-center justify-center gap-2"
+              <section aria-labelledby="recent-rides-heading">
+                <div className="mb-4 flex items-center justify-between px-1">
+                  <h2 id="recent-rides-heading" className="text-lg font-semibold">Recent rides</h2>
+                  <Link
+                    href="/passenger/history"
+                    className={`inline-flex items-center gap-1 rounded-lg text-sm font-medium text-[#A1A1AA] transition-colors hover:text-[#10B981] ${FOCUS_RING}`}
                   >
-                    {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
-                    Cancel Ride
-                  </button>
-                  <p className="text-center text-xs text-[#6B7280] mt-3 font-medium">
-                    No fee if cancelled before driver arrives
-                  </p>
+                    View all
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-      </main>
+
+                {recentRides.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#3F4A44] bg-[#131815] p-8 text-center">
+                    <Clock className="mx-auto mb-3 h-7 w-7 text-[#8B93A0]" aria-hidden="true" />
+                    <p className="text-sm font-medium text-[#F3F4F6]">No rides yet</p>
+                    <p className="mt-1 text-xs text-[#8B93A0]">Book your first pooled ride to see it here.</p>
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {recentRides.map((ride) => (
+                      <li key={ride.id}><RideRow ride={ride} /></li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </>
+          ) : activeRide ? (
+            <section aria-labelledby="active-ride-heading">
+              <h1 id="active-ride-heading" className="mb-8 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+                Your ride
+              </h1>
+
+              <div className="rounded-3xl border border-[#2C3831] bg-[#131815] p-6 shadow-2xl sm:p-8">
+                <div className="mb-8 flex items-center justify-between gap-4 border-b border-[#2C3831] pb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-center gap-1" aria-hidden="true">
+                      <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                      <span className="h-6 w-0.5 rounded-full bg-[#1E2621]" />
+                      <span className="h-2.5 w-2.5 rounded-sm bg-[#10B981]" />
+                    </div>
+                    <div className="flex h-14 flex-col justify-between">
+                      <span className="text-sm font-semibold text-[#F3F4F6]">{activeRide.pickup_zone}</span>
+                      <span className="text-sm font-semibold text-[#F3F4F6]">{activeRide.destination_zone}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-[#8B93A0]">Fare</p>
+                    <RideAmount ride={activeRide} className="text-xl font-bold" />
+                  </div>
+                </div>
+
+                <ol className="mb-12 flex items-start gap-1" aria-label="Ride progress">
+                  {STEPS.map((step, index) => {
+                    const isActive = index === stepIndex;
+                    const isPast = index <= stepIndex;
+                    return (
+                      <li key={step} className="flex flex-1 flex-col items-center gap-2 text-center">
+                        <span
+                          aria-hidden="true"
+                          className={`flex h-3 w-full max-w-[3rem] items-center justify-center transition-colors ${
+                            isPast ? 'bg-[#10B981]' : 'bg-[#1E2621]'
+                          }`}
+                        >
+                          {isActive && <span className="h-2 w-2 rounded-full bg-[#022C22]" />}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-widest ${
+                            isActive ? 'text-[#10B981]' : isPast ? 'text-[#F3F4F6]' : 'text-[#8B93A0]'
+                          }`}
+                        >
+                          {step.replace('_', ' ')}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p className="sr-only">Step {stepIndex + 1} of {STEPS.length}: {STEPS[stepIndex].replace('_', ' ')}</p>
+
+                <div className="mt-2 flex items-center gap-4 rounded-2xl border border-[#2C3831] bg-[#0A0D0B] p-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#2C3831] bg-[#131815] text-[#10B981]">
+                    {stepIndex >= 1 ? <Car className="h-6 w-6" aria-hidden="true" /> : <Search className="h-6 w-6 animate-pulse" aria-hidden="true" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[#F3F4F6]">
+                      {stepIndex >= 1 ? 'Driver assigned' : 'Finding your driver'}
+                    </p>
+                    <p className="mt-1 text-xs text-[#A1A1AA]">
+                      {stepIndex >= 1 ? 'Heading to your pickup point' : 'Matching you with a pooled ride'}
+                    </p>
+                  </div>
+                  <RideStatusBadge status={activeRide.status} className="ml-auto" />
+                </div>
+
+                {canCancel && (
+                  <div className="mt-8 border-t border-[#2C3831] pt-6">
+                    <button
+                      type="button"
+                      onClick={cancelRide}
+                      disabled={cancelling}
+                      aria-busy={cancelling}
+                      className={`flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/5 text-sm font-semibold text-red-300 transition-colors hover:border-red-500/50 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50 ${FOCUS_RING}`}
+                    >
+                      {cancelling
+                        ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        : <X className="h-4 w-4" aria-hidden="true" />}
+                      {cancelling ? 'Cancelling…' : 'Cancel ride'}
+                    </button>
+                    <p className="mt-3 text-center text-xs text-[#8B93A0]">No fee if you cancel before the driver arrives.</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          ) : null}
+        </main>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { getPrisma } from '@/lib/prisma';
+import { startOfDhakaDay, startOfDhakaMonth } from '@/lib/datetime';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,16 +13,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Boundaries must be Dhaka-local: a ride completing at 00:30 Dhaka is "yesterday" in
+    // UTC, so server-local (UTC on Vercel) boundaries would drop it from today's total.
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const today = startOfDhakaDay(now);
+    const thisMonth = startOfDhakaMonth(now);
+    // Bucket on COALESCE(completed_at, requested_at) so a COMPLETED ride with a null
+    // completed_at is not silently excluded from the driver's earnings.
+    const since = (boundary: Date) => ({
+      OR: [
+        { completed_at: { gte: boundary } },
+        { completed_at: null, requested_at: { gte: boundary } },
+      ],
+    });
 
     const [todayRides, monthRides] = await Promise.all([
       prisma.rideRequest.findMany({
         where: {
           pool: { vehicle: { driver_id: user.id } },
           status: 'COMPLETED',
-          completed_at: { gte: today }
+          ...since(today),
         },
         select: { fare_amount: true }
       }),
@@ -29,7 +40,7 @@ export async function GET(req: NextRequest) {
         where: {
           pool: { vehicle: { driver_id: user.id } },
           status: 'COMPLETED',
-          completed_at: { gte: thisMonth }
+          ...since(thisMonth),
         },
         select: { fare_amount: true }
       })

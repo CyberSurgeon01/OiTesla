@@ -1,118 +1,118 @@
-"use client";
+'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, MapPin, Calendar, Clock } from 'lucide-react';
+import { ArrowLeft, Clock, Loader2, RefreshCw } from 'lucide-react';
+
+import { readApiResponse } from '@/lib/api-response';
+import type { PassengerRide } from '@/lib/ride-status';
+import { RideRow } from '@/components/passenger/ride-row';
+
+const FOCUS_RING =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0D0B]';
 
 export default function PassengerHistory() {
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<PassengerRide[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    let cancelled = false;
+
+    async function fetchHistory() {
       const token = localStorage.getItem('token');
       if (!token) {
-        router.push('/login');
+        router.replace('/login');
         return;
       }
+      setLoading(true);
+      setError(null);
       try {
-        const res = await fetch(`/api/passenger/rides/history`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch('/api/passenger/rides/history', {
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.status === 401 || res.status === 403) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          router.push('/login');
+          router.replace('/login');
           return;
         }
-        if (res.ok) {
-          const data = await res.json();
-          data.sort((a: any, b: any) => new Date(b.requested_at).getTime() - new Date(a.requested_at).getTime());
-          setHistory(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch history', error);
+        const data = await readApiResponse(res);
+        if (!res.ok) throw new Error(data.error || 'Could not load your ride history.');
+        if (!cancelled) setHistory(Array.isArray(data) ? (data as PassengerRide[]) : []);
+      } catch (cause) {
+        if (!cancelled) setError((cause as Error).message || 'Could not load your ride history.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
+    }
+
     fetchHistory();
-  }, [router]);
+    return () => { cancelled = true; };
+  }, [router, reloadKey]);
 
   return (
-    <div className="min-h-screen bg-[#0A0D0B] text-[#F3F4F6] font-sans selection:bg-[#10B981]/30 pb-20">
-      <header className="sticky top-0 z-40 w-full bg-[#0A0D0B]/90 backdrop-blur-xl border-b border-[#2C3831]">
-        <div className="max-w-screen-xl mx-auto flex h-16 items-center px-6 gap-4">
-          <Link href="/passenger/dashboard" className="p-2 -ml-2 rounded-full hover:bg-[#131815] transition-colors text-[#A1A1AA] hover:text-[#F3F4F6]">
-            <ArrowLeft className="w-5 h-5" />
+    <div className="min-h-screen bg-[#0A0D0B] font-sans text-[#F3F4F6] selection:bg-[#10B981]/30">
+      <a
+        href="#history-list"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-10 focus:rounded-lg focus:bg-[#10B981] focus:px-4 focus:py-2 focus:font-semibold focus:text-[#022C22]"
+      >
+        Skip to ride list
+      </a>
+
+      <header className="sticky top-0 z-40 w-full border-b border-[#2C3831] bg-[#0A0D0B]/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 w-full max-w-lg items-center gap-4 px-4 sm:px-6">
+          <Link
+            href="/passenger/dashboard"
+            aria-label="Back to dashboard"
+            className={`-ml-2 rounded-full p-2 text-[#A1A1AA] transition-colors hover:bg-[#131815] hover:text-[#F3F4F6] ${FOCUS_RING}`}
+          >
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </Link>
-          <span className="font-bold text-lg tracking-tight">Trip History</span>
+          <span className="text-lg font-bold tracking-tight">Trip history</span>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto p-6 space-y-6">
+      <main id="history-list" className="mx-auto w-full max-w-lg space-y-4 px-4 py-8 sm:px-6">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-[#10B981]" />
+          <div className="flex justify-center py-20" role="status">
+            <Loader2 className="h-8 w-8 animate-spin text-[#10B981]" aria-hidden="true" />
+            <span className="sr-only">Loading your ride history</span>
+          </div>
+        ) : error ? (
+          <div className="space-y-4 rounded-2xl border border-red-500/40 bg-red-500/5 p-8 text-center" role="alert">
+            <p className="text-sm font-medium text-red-200">{error}</p>
+            <button
+              type="button"
+              onClick={() => setReloadKey((key) => key + 1)}
+              className={`inline-flex items-center gap-2 rounded-xl border border-[#2C3831] bg-[#131815] px-4 py-2.5 text-sm font-semibold text-[#F3F4F6] transition-colors hover:border-[#10B981]/60 ${FOCUS_RING}`}
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Try again
+            </button>
           </div>
         ) : history.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#3F3F46] p-12 text-center text-[#A1A1AA] bg-[#131815]">
-            <Clock className="mx-auto h-8 w-8 opacity-50 mb-3" />
-            <p>No past trips found</p>
+          <div className="rounded-2xl border border-dashed border-[#3F4A44] bg-[#131815] p-12 text-center">
+            <Clock className="mx-auto mb-3 h-8 w-8 text-[#8B93A0]" aria-hidden="true" />
+            <p className="text-base font-semibold text-[#F3F4F6]">No trips yet</p>
+            <p className="mx-auto mt-2 max-w-xs text-sm text-[#8B93A0]">
+              Completed and cancelled rides will be listed here once you have taken a trip.
+            </p>
+            <Link
+              href="/passenger/dashboard"
+              className={`mt-6 inline-flex items-center rounded-xl bg-[#F0FDF4] px-5 py-2.5 text-sm font-semibold text-[#022C22] transition-colors hover:bg-[#DCFCE7] ${FOCUS_RING}`}
+            >
+              Book your first ride
+            </Link>
           </div>
         ) : (
-          <div className="space-y-4">
-            {history.map((ride: any) => (
-              <div key={ride.id} className="bg-[#131815] border border-[#2C3831] rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
-                <div className="p-5 border-b border-[#2C3831] flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-[#A1A1AA]" />
-                    <span className="text-sm font-medium text-[#A1A1AA]">
-                      {new Date(ride.requested_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  </div>
-                  <span className={`text-xs font-semibold uppercase tracking-widest ${ride.status === 'COMPLETED' ? 'text-[#10B981]' : 'text-red-500/80'}`}>
-                    {ride.status}
-                  </span>
-                </div>
-                <div className="p-5 flex flex-col gap-4">
-                  <div className="flex justify-between items-start">
-                    <div className="font-semibold text-2xl text-[#F3F4F6]">
-                      ৳{(ride.fare_amount / 100).toFixed(2)}
-                    </div>
-                    <div className="text-sm font-medium text-[#A1A1AA] bg-[#1E2621] border border-[#2C3831] px-3 py-1 rounded-full">
-                      {ride.seats_requested} Seat{ride.seats_requested > 1 ? 's' : ''}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-white" />
-                      <div className="w-[1px] h-4 bg-[#2C3831]" />
-                      <div className="w-2 h-2 rounded-sm bg-[#10B981]" />
-                    </div>
-                    <div className="flex flex-col justify-between h-10 text-sm text-[#A1A1AA]">
-                      <span>{ride.pickup_zone}</span>
-                      <span>{ride.destination_zone}</span>
-                    </div>
-                  </div>
-                  {ride.rating && (
-                    <div className="mt-2 pt-4 border-t border-[#2C3831] flex flex-col gap-2">
-                      <div className="flex items-center gap-1 text-yellow-400">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <span key={i}>{i < ride.rating ? '★' : '☆'}</span>
-                        ))}
-                      </div>
-                      {ride.rating_comment && (
-                        <p className="text-sm text-[#A1A1AA] italic">"{ride.rating_comment}"</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+          <ul className="space-y-3">
+            {history.map((ride) => (
+              <li key={ride.id}><RideRow ride={ride} showFareBreakdown /></li>
             ))}
-          </div>
+          </ul>
         )}
       </main>
     </div>

@@ -95,6 +95,8 @@ model RideRequest {
   seats_requested  Int
   status           RideStatus    @default(REQUESTED)
   fare_amount      Int           // Stored in poysha
+  // Breakdown captured when the ride was priced, so history never restates old fares.
+  fare_breakdown   Json?
   payment_method   PaymentMethod @default(CASH)
   
   requested_at     DateTime   @default(now())

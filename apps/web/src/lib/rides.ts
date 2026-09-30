@@ -1,20 +1,18 @@
-import { PrismaClient, RideStatus } from '@prisma/client';
+import { Prisma, PrismaClient, RideStatus } from '@prisma/client';
 import { HttpError } from './http-error';
-import { calculateFare } from './fare/fare.calculator';
-import { ZONES, isDestinationCompatible } from './pooling/geography';
+import { quoteFare, validateQuoteInput } from './fare/pricing';
 
 const activeRideWhere = { status: { notIn: [RideStatus.CANCELLED, RideStatus.COMPLETED] } };
-const waitingStatuses: RideStatus[] = [RideStatus.REQUESTED, RideStatus.MATCHED];
 
 export async function requestRide(prisma: PrismaClient, passengerId: number, body: Record<string, unknown>) {
   const { pickup_zone, destination_zone, seats_requested = 1, payment_method = 'CASH' } = body;
-  if (typeof pickup_zone !== 'string' || typeof destination_zone !== 'string' ||
-      !ZONES.includes(pickup_zone) || !ZONES.includes(destination_zone) || pickup_zone === destination_zone ||
-      typeof seats_requested !== 'number' || !Number.isInteger(seats_requested) || seats_requested < 1 ||
-      (payment_method !== 'CASH' && payment_method !== 'TESLA_PAY')) {
-    throw new HttpError(400, 'Invalid ride parameters');
+  const invalidQuote = validateQuoteInput(pickup_zone, destination_zone, seats_requested);
+  if (invalidQuote) throw new HttpError(400, invalidQuote);
+  if (payment_method !== 'CASH' && payment_method !== 'TESLA_PAY') {
+    throw new HttpError(400, 'Invalid payment method');
   }
-  const fare_amount = calculateFare(pickup_zone, destination_zone, seats_requested);
+  // Re-price on the server. The client total is never trusted.
+  const fare = quoteFare(pickup_zone as string, destination_zone as string, seats_requested as number);
   return prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${passengerId} FOR UPDATE`;
     const passenger = await tx.user.findUnique({ where: { id: passengerId } });
@@ -22,10 +20,24 @@ export async function requestRide(prisma: PrismaClient, passengerId: number, bod
     if (await tx.rideRequest.findFirst({ where: { passenger_id: passengerId, ...activeRideWhere } })) {
       throw new HttpError(409, 'You already have an active ride');
     }
-    if (payment_method === 'TESLA_PAY' && passenger.wallet_balance < fare_amount) {
+    if (payment_method === 'TESLA_PAY' && passenger.wallet_balance < fare.total) {
       throw new HttpError(409, 'Insufficient wallet balance');
     }
-    return { ride: await tx.rideRequest.create({ data: { passenger_id: passengerId, pickup_zone, destination_zone, seats_requested, payment_method, fare_amount, status: "REQUESTED" } }) };
+    return {
+      ride: await tx.rideRequest.create({
+        data: {
+          passenger_id: passengerId,
+          pickup_zone: pickup_zone as string,
+          destination_zone: destination_zone as string,
+          seats_requested: seats_requested as number,
+          payment_method,
+          fare_amount: fare.total,
+          fare_breakdown: fare as unknown as Prisma.InputJsonObject,
+          status: 'REQUESTED',
+        },
+      }),
+      fare,
+    };
   }, { maxWait: 10000, timeout: 15000 });
 }
 

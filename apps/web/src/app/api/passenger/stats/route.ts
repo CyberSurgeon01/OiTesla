@@ -1,44 +1,53 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { getPrisma } from '@/lib/prisma';
+import { startOfDhakaDay, startOfDhakaMonth } from '@/lib/datetime';
 
-export const dynamic = 'force-dynamic';
-
+/**
+ * Passenger spend totals.
+ *
+ * Only COMPLETED rides count — a cancelled ride is never charged, so including it
+ * overstated spend. Day and month boundaries are Dhaka's, not the server's: the
+ * deployment runs in UTC, where a ride completed at 00:30 in Dhaka belongs to the
+ * previous UTC day.
+ *
+ * Rides are bucketed on COALESCE(completed_at, requested_at). A COMPLETED ride with a
+ * null completed_at is still money the passenger was charged, and filtering on
+ * completed_at alone silently dropped it from every total.
+ *
+ * Totals are returned in integer poysha and formatted in the browser.
+ */
 export async function GET(req: NextRequest) {
-  const prisma = getPrisma();
   try {
-    const user = await getAuthUser(req);
+    const user = getAuthUser(req);
     if (!user || user.role !== 'PASSENGER') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const today = startOfDhakaDay();
+    const month = startOfDhakaMonth();
+    const since = (boundary: Date) => ({
+      OR: [
+        { completed_at: { gte: boundary } },
+        { completed_at: null, requested_at: { gte: boundary } },
+      ],
+    });
 
     const [todayRides, monthRides] = await Promise.all([
-      prisma.rideRequest.findMany({
-        where: {
-          passenger_id: user.id,
-          status: 'COMPLETED',
-          completed_at: { gte: today }
-        },
-        select: { fare_amount: true }
+      getPrisma().rideRequest.findMany({
+        where: { passenger_id: user.id, status: 'COMPLETED', ...since(today) },
+        select: { fare_amount: true },
       }),
-      prisma.rideRequest.findMany({
-        where: {
-          passenger_id: user.id,
-          status: 'COMPLETED',
-          completed_at: { gte: thisMonth }
-        },
-        select: { fare_amount: true }
-      })
+      getPrisma().rideRequest.findMany({
+        where: { passenger_id: user.id, status: 'COMPLETED', ...since(month) },
+        select: { fare_amount: true },
+      }),
     ]);
 
-    const spentToday = todayRides.reduce((sum, r) => sum + r.fare_amount, 0) / 100;
-    const spentThisMonth = monthRides.reduce((sum, r) => sum + r.fare_amount, 0) / 100;
+    const sum = (rides: { fare_amount: number }[]) => rides.reduce((total, ride) => total + ride.fare_amount, 0);
 
-    return NextResponse.json({ spentToday, spentThisMonth });
+    return NextResponse.json({ spentToday: sum(todayRides), spentThisMonth: sum(monthRides) });
   } catch (error) {
     console.error('[PASSENGER_STATS]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

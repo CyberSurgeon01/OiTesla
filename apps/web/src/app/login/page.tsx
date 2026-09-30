@@ -1,16 +1,25 @@
 "use client";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { readApiResponse } from '@/lib/api-response';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Car, UserRound, X } from 'lucide-react';
 import { useClerk } from '@clerk/nextjs';
+
+const DEMO_PASSWORD = 'hashedpassword123';
+const DEMO_ACCOUNTS = [
+  { name: 'Jashim', role: 'Driver', email: 'jashim@oitesla.com' },
+  { name: 'Nusrat', role: 'Passenger', email: 'nusrat@oitesla.com' },
+  { name: 'Rafiq', role: 'Passenger', email: 'rafiq@oitesla.com' },
+  { name: 'Shirin', role: 'Passenger', email: 'shirin@oitesla.com' },
+];
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDemoAccounts, setShowDemoAccounts] = useState(false);
   const router = useRouter();
   const clerk = useClerk();
 
@@ -37,6 +46,27 @@ export default function Login() {
   };
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!showDemoAccounts) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowDemoAccounts(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      document.body.style.overflow = '';
+    };
+  }, [showDemoAccounts]);
+
+  const selectDemoAccount = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword(DEMO_PASSWORD);
+    setShowDemoAccounts(false);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -166,8 +196,79 @@ export default function Login() {
           <Link href="/signup" className="font-semibold text-white hover:text-[#10B981] transition-colors underline underline-offset-4">
             Sign up
           </Link>
+          <button
+            type="button"
+            onClick={() => setShowDemoAccounts(true)}
+            className="mx-auto mt-3 block font-semibold text-[#10B981] underline decoration-[#10B981]/60 underline-offset-4 transition-colors hover:text-[#34D399]"
+          >
+            Demo accounts
+          </button>
         </div>
       </div>
+
+      {showDemoAccounts && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-4 py-8 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowDemoAccounts(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="demo-accounts-title"
+            className="relative max-h-[calc(100vh-4rem)] w-full max-w-md overflow-y-auto rounded-[2rem] border border-white/10 bg-[#101512] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.65)] sm:p-8"
+          >
+            <button
+              type="button"
+              onClick={() => setShowDemoAccounts(false)}
+              aria-label="Close demo accounts"
+              className="absolute right-5 top-5 rounded-full border border-white/10 bg-white/5 p-2 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="pr-10">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#10B981]">Quick access</p>
+              <h2 id="demo-accounts-title" className="text-2xl font-bold text-white">Demo accounts</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-400">Choose an account to fill in the login form.</p>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {DEMO_ACCOUNTS.map((account) => {
+                const Icon = account.role === 'Driver' ? Car : UserRound;
+                return (
+                  <button
+                    key={account.email}
+                    type="button"
+                    onClick={() => selectDemoAccount(account.email)}
+                    className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-black/25 p-4 text-left transition-all hover:border-[#10B981]/50 hover:bg-[#10B981]/5 focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                  >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#10B981]/20 bg-[#10B981]/10 text-[#34D399]">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="font-semibold text-white">{account.name}</span>
+                        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                          {account.role}
+                        </span>
+                      </span>
+                      <span className="mt-1 block truncate text-sm text-gray-400">{account.email}</span>
+                    </span>
+                    <span className="text-xs font-semibold text-[#10B981] opacity-0 transition-opacity group-hover:opacity-100">Use</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">Password for all accounts</p>
+              <p className="mt-1 font-mono text-sm font-semibold text-white">{DEMO_PASSWORD}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

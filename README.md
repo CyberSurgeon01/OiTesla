@@ -11,14 +11,45 @@ The application uses a **Broadcast Model** where passengers request rides and dr
 
 ### Authentication (Login & Signup)
 
+#### Login
+
+![OiTesla login screen](apps/web/public/screenshots/login.png)
+
+#### Create an account
+
+![OiTesla signup screen](apps/web/public/screenshots/signup.png)
+
+#### Email verification
+
+![OiTesla email verification screen](apps/web/public/screenshots/verify-email.png)
+
 ### Passenger Dashboard & Active Ride
+
+![OiTesla passenger active ride](apps/web/public/screenshots/passenger-active-ride.png)
 
 ### Driver Dashboard & Earnings
 
+#### Incoming ride requests
+
+![OiTesla driver dashboard with an incoming request](apps/web/public/screenshots/driver-dashboard.png)
+
+#### Active shared trip
+
+![OiTesla driver active trip and earnings](apps/web/public/screenshots/driver-active-trip.png)
+
 ### Post-Ride Rating Popup
+
+![OiTesla post-ride rating popup](apps/web/public/screenshots/rating-popup.png)
 
 ### Comprehensive Trip History
 
+#### Passenger history
+
+![OiTesla passenger trip history](apps/web/public/screenshots/passenger-history.png)
+
+#### Driver history
+
+![OiTesla driver trip history](apps/web/public/screenshots/history.png)
 
 ## Features
 
